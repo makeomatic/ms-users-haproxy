@@ -6,12 +6,15 @@
     "test": "test"
   },
   "scripts": {
-    "test": "yarn mdep test run"
+    "test": "yarn mdep test run",
+    "semantic-release": "semantic-release"
   },
   "devDependencies": {
+    "@babel/core": "^7.16.10",
     "@babel/register": "^7.16.9",
     "@makeomatic/deploy": "^11.0.5",
     "axios": "^0.25.0",
+    "bluebird": "^3.7.2",
     "consul": "^0.40.0",
     "cross-env": "^7.0.3",
     "jsonwebtoken": "^8.5.1",
