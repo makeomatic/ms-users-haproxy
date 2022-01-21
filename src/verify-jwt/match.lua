@@ -2,6 +2,8 @@ local cjson = require "cjson.safe";
 
 local strlower = string.lower;
 local strfind = string.find;
+local strmatch = string.match;
+
 local jsonDecode = cjson.new().decode;
 
 local function catch(what)
@@ -80,7 +82,8 @@ local function startsWith(value, filter)
   if isempty(value) then
     return false;
   end
-  return string.match("^" .. filter, value)
+
+  return strmatch(strlower(value), strlower("^" .. filter)) ~= nil
 end
 
 local function eq(value, filter)
@@ -94,6 +97,7 @@ local opTypes = {
   lt = lt,
   match = filterString,
   eq = eq,
+  sw = startsWith,
 };
 
 local function filter(op, opFilter, fieldValue)
@@ -109,12 +113,19 @@ local function matchFilter(valueToFilter, filterValue)
   local isOr = filterValue._or
 
   for op, opFilter in pairs(filterValue) do
-    if op ~= '_or' and filter(op, opFilter, valueToFilter) ~= true then
-      return false;
+    -- we should skip _or field
+    if op ~= '_or' then
+      -- dedup?
+      local result = filter(op, opFilter, valueToFilter)
+      if isOr and result then
+        return true;
+      elseif not isOr and not result then
+        return false
+      end
     end
   end
 
-  return true;
+  return not isOr;
 end
 
 local filterType = {
@@ -125,12 +136,12 @@ local filterType = {
 };
 
 local function matchRule(data, filter)
-  local isOr = filter['_or'] == true
+  local isOr = filter._or
 
   for field, ops in pairs(filter) do
+    -- we should skip _or field
     if field ~= '_or' then
       local result = filterType[type(ops)](data[field], ops)
-
       if isOr and result == true then
         return true
       elseif not isOr and result == false then

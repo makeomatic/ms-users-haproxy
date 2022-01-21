@@ -56,6 +56,14 @@ describe('HaProxy lua', () => {
   // const signEs = (payload) => jwt.sign({ ...payload }, privateKeys.es, { algorithm: 'ES256' })
   const signHmac = (payload) => jwt.sign({ ...payload }, privateKeys.hs, { algorithm: 'HS256' })
 
+  const validateResponse = (res, expected) => {
+    const prefix = 'x-tkn';
+    Object.entries(expected).forEach(([k, v]) => {
+      const prop = `${prefix}-${k}`
+      deepStrictEqual(res[prop], v, `header '${prop}' should have value '${v}' but has '${res[prop]}'`)
+    })  
+  }
+
   before(async () => {
     privateKeys = {
       rsa: {
@@ -77,15 +85,14 @@ describe('HaProxy lua', () => {
       }
 
       const res = await haGet(signHmac(data))
-      console.debug(res)
 
-      deepStrictEqual(res, {
-        'x-tkn-payload-iat': `${data.iat}.0`,
-        'x-tkn-payload-exp': `${data.exp}.0`,
-        'x-tkn-valid': '1',
-        'x-tkn-payload-audience': '["x","y"]',
-        'x-tkn-reason': 'ok',
-        'x-tkn-payload-username': '777444777'
+      validateResponse(res, {
+        reason: 'ok',
+        valid: '1',
+        'payload-username': '777444777',
+        'payload-audience': '["x","y"]',
+        'payload-iat': `${data.iat}.0`,
+        'payload-exp': `${data.exp}.0`,
       })
     });
 
@@ -98,15 +105,14 @@ describe('HaProxy lua', () => {
       }
 
       const res = await haGet(signHmac(data))
-      console.debug(res)
 
-      deepStrictEqual(res, {
-        'x-tkn-payload-iat': `${data.iat}.0`,
-        'x-tkn-payload-exp': `${data.exp}.0`,
-        'x-tkn-valid': '0',
-        'x-tkn-payload-audience': '["x","y"]',
-        'x-tkn-reason': 'expired',
-        'x-tkn-payload-username': '777444777'
+      validateResponse(res, {
+        valid: '0',
+        reason: 'expired',
+        'payload-username': '777444777',
+        'payload-audience': '["x","y"]',
+        'payload-iat': `${data.iat}.0`,
+        'payload-exp': `${data.exp}.0`,
       })
     });
   });
@@ -119,18 +125,17 @@ describe('HaProxy lua', () => {
         exp: Date.now() + 30 * 24 * 60 * 60 * 1000,
         audience: ['x', 'y']
       }
+
       const token = signRsa(data)
-      console.debug({ token })
       const res = await haGet(token)
 
-      console.debug(res);
-      deepStrictEqual(res, {
-        'x-tkn-payload-iat': `${data.iat}.0`,
-        'x-tkn-payload-exp': `${data.exp}.0`,
-        'x-tkn-valid': '1',
-        'x-tkn-payload-audience': '["x","y"]',
-        'x-tkn-reason': 'ok',
-        'x-tkn-payload-username': '777444777'
+      validateResponse(res, {
+        valid: '1',
+        reason: 'ok',
+        'payload-iat': `${data.iat}.0`,
+        'payload-exp': `${data.exp}.0`,
+        'payload-audience': '["x","y"]',
+        'payload-username': '777444777'
       })
     });
     
@@ -143,14 +148,14 @@ describe('HaProxy lua', () => {
       }
 
       const res = await haGet(signRsa(data))
-      console.debug(res)
-      deepStrictEqual(res, {
-        'x-tkn-payload-iat': `${data.iat}.0`,
-        'x-tkn-payload-exp': `${data.exp}.0`,
-        'x-tkn-valid': '0',
-        'x-tkn-payload-audience': '["x","y"]',
-        'x-tkn-reason': 'expired',
-        'x-tkn-payload-username': '777444777'
+
+      validateResponse(res, {
+        valid: '0',
+        reason: 'expired',
+        'payload-iat': `${data.iat}.0`,
+        'payload-exp': `${data.exp}.0`,
+        'payload-audience': '["x","y"]',
+        'payload-username': '777444777'
       })
     });
   });
@@ -195,56 +200,164 @@ describe('HaProxy lua', () => {
     const uRule = (rt) => `u/${rt.username}/${tid++}`;
     const gRule = () => `g/${tid++}`;
 
-    it.only('should validate tokens', async () => {
-      await kvDel()
-      
-      const u1 = 'foouser';
-      const { refresh: firstRefresh, access: firstAccess } = createTokenPair(u1);
-      
-      const secondAccess = createAccessToken(firstRefresh, {
-        iat: Date.now() + 1 * 60 * 60 * 1000,
+    describe('token-validation', () => {
+      const user = 'foouser';
+
+      before(async () => {
+        await kvDel()
       })
 
-      await kvPut(uRule(firstRefresh), invAccess(secondAccess));
+      const blacklistedResponse = {
+        valid: '0',
+        reason: 'blacklisted',
+        'payload-iss': 'ms-users',
+        'payload-username': user
+      }
 
-      const thirdAccess = createAccessToken(firstRefresh, {
-        iat: Date.now() + 2 * 60 * 60 * 1000,
+      const okResponse = {
+        valid: '1',
+        reason: 'ok',
+        'payload-iss': 'ms-users',
+        'payload-username': user
+      }
+
+      it('should validate tokens', async () => {
+        const { refresh: firstRefresh, access: firstAccess } = createTokenPair(user);
+        
+        const secondAccess = createAccessToken(firstRefresh, {
+          iat: Date.now() + 1 * 60 * 60 * 1000,
+        })
+  
+        // invalidate 1 access token
+        await kvPut(uRule(firstRefresh), invAccess(secondAccess));
+  
+        const thirdAccess = createAccessToken(firstRefresh, {
+          iat: Date.now() + 2 * 60 * 60 * 1000,
+        })
+  
+        // invalidate 2 access token
+        await kvPut(uRule(firstRefresh), invAccess(thirdAccess));
+        await delay(2000);
+  
+        const thirdJwtRes = await haGet(signHmac(thirdAccess));
+        const secondJwtRes = await haGet(signHmac(secondAccess));
+        const firstJwtRes = await haGet(signHmac(firstAccess));
+  
+  
+        validateResponse(firstJwtRes, blacklistedResponse)
+        validateResponse(secondJwtRes, blacklistedResponse)
+        validateResponse(thirdJwtRes, okResponse)
+  
+        // invalidate refresh token
+        await kvPut(uRule(firstRefresh), invRtRule(firstRefresh));
+        await delay(2000);
+  
+        const thirdInvJwtRes = await haGet(signHmac(thirdAccess));
+        const secondInvJwtRes = await haGet(signHmac(secondAccess));
+        const firstInvJwtRes = await haGet(signHmac(firstAccess));
+  
+        validateResponse(firstInvJwtRes, blacklistedResponse)
+        validateResponse(secondInvJwtRes, blacklistedResponse)
+        validateResponse(thirdInvJwtRes, blacklistedResponse)
       })
 
-      await kvPut(uRule(firstRefresh), invAccess(thirdAccess));
+      it('should validate tokens #global', async () => {
+        // sign new tokens
+        const newPair = createTokenPair(user);
+        const newJwtRes = await haGet(signHmac(newPair.access));
+  
+        // invalidate all tokens
+        await kvPut(gRule(), invAll(newPair.refresh));
+        await delay(2000);
+  
+        const newJwtBlockedRes = await haGet(signHmac(newPair.access));
 
-      await delay(3000);
-
-      const res = await haGet(signHmac(thirdAccess));
-      const res2 = await haGet(signHmac(secondAccess));
-      const res3 = await haGet(signHmac(firstAccess));
-
-      console.debug({
-        res, res2, res3
+        validateResponse(newJwtRes, okResponse)
+        validateResponse(newJwtBlockedRes, blacklistedResponse)
       })
 
-      await kvPut(uRule(firstRefresh), invRtRule(firstRefresh));
+      it('#rules and #_or', async () => {
+        const accessTokenData = createAccessToken({
+          cs: 'xid',
+          username: user,
+          ...base,
+        })
 
-      await delay(3000);
+        await kvPut(uRule({ username: 'gt' }), { gtVal: { gt: 10 }})
+        await kvPut(uRule({ username: 'lt' }), { ltVal: { lt: 10 }})
+        await kvPut(uRule({ username: 'gte' }), { gteVal: { gte: 10 }})
+        await kvPut(uRule({ username: 'lte' }), { lteVal: { lte: 10 }})
 
-      const ares = await haGet(signHmac(thirdAccess));
-      const ares2 = await haGet(signHmac(secondAccess));
-      const ares3 = await haGet(signHmac(firstAccess));
+        await kvPut(uRule({ username: 'eq' }), { eqVal: { eq: 'some' }})
+        await kvPut(uRule({ username: 'eqNum' }), { eqVal: { eq: 10 }})
+        await kvPut(uRule({ username: 'eqString' }), { eqVal: 'some' })
+        
+        await kvPut(uRule({ username: 'match' }), { matchVal: { match : 'some777some' } })
+        await kvPut(uRule({ username: 'startsWith' }), { swVal: { sw: 'some' }})
 
-      console.debug({
-        ares, ares2, ares3
-      })
+        await kvPut(uRule({ username: 'topLevelOr' }), {
+          _or: true,
+          swVal: { sw: 'some' },
+          eqVal: 'some'
+        })
 
-      const newPair = createTokenPair(u1);
-      const bres = await haGet(signHmac(newPair.access));
-      
-      await kvPut(gRule(), invAll(newPair.refresh));
-      
-      await delay(3000);
+        await kvPut(uRule({ username: 'operOr' }), {
+          swVal: {
+            sw: 'some',
+            _or: true,
+            eq: 'foo'
+          },
+        })
 
-      const bres2 = await haGet(signHmac(newPair.access));
-      console.debug({
-        bres, bres2
+        await delay(2000)
+
+        const check = async (rule, data, shoulBeInvalid = true) => {
+          const token = signHmac({
+            ...accessTokenData,
+            username: rule,
+            ...data
+          })
+
+          const response = await haGet(token)
+          validateResponse(response, { valid: shoulBeInvalid ? '0' : '1' })
+        }
+        
+        await check('gt', { gtVal: 10 }, false)
+        await check('gt', { gtVal: 11 }, true)
+        
+        await check('lt', { ltVal: 10 }, false)
+        await check('lt', { ltVal:  9}, true)
+
+        await check('gte', { gteVal: 9 }, false)
+        await check('gte', { gteVal: 10 }, true)
+        await check('gte', { gteVal: 11 }, true)
+
+        await check('lte', { lteVal: 11 }, false)
+        await check('lte', { lteVal: 10 }, true)
+        await check('lte', { lteVal:  9}, true)
+
+        await check('eq', { eqVal: 'some' }, true)
+        await check('eq', { eqVal: 'somex' }, false)
+
+        await check('eqNum', { eqVal: 10 }, true)
+        await check('eqNum', { eqVal: 11 }, false)
+
+        await check('eqString', { eqVal: 'some' }, true)
+        await check('eqString', { eqVal: 'somex' }, false)
+
+        await check('match', { matchVal: 'xbarsome777somexbar' }, true)
+        await check('match', { matchVal: 'xbarsomexbar' }, false)
+
+        await check('startsWith', { swVal: 'someThatStarts' }, true)
+        await check('startsWith', { swVal: 'xsomeThatNotStarts' }, false)
+
+        await check('topLevelOr', { swVal: 'notsome', eqVal: 'some' },  true)
+        await check('topLevelOr', { swVal: 'some', eqVal: 'neqsome' },  true)
+        await check('topLevelOr', { swVal: 'notsome', eqVal: 'neqsome' },  false)
+
+        await check('operOr', { swVal: 'somesss' }, true)
+        await check('operOr', { swVal: 'foo' },  true)
+        await check('operOr', { swVal: 'bar' },  false)
       })
     })
   })

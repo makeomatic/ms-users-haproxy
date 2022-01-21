@@ -117,11 +117,6 @@ local function verifyJWT(txn)
   local rules = consulSource.getRules(tokenBody.username)
   local filterResult = matcher.findMatches(tokenBody, rules)
 
-  print_r({
-    token = tokenBody,
-    filterResult = filterResult,
-  }, true)
-
   if filterResult == true then
     setReqParams(txn, 0, 'blacklisted', tokenBody)
     return
