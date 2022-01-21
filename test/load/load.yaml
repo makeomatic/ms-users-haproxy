@@ -1,0 +1,14 @@
+phantom:
+  address: haproxy:8081
+  load_profile:
+    load_type: rps
+    schedule: line(200, 200, 10m)
+  header_http: "1.1"
+  headers:
+    - "[authorization: JWT eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6Ijc3NzQ0NDc3NyIsImlhdCI6MTY0MjY4NTIzMTY4MCwiZXhwIjoxNjQ1Mjc3MjMxNjgwLCJhdWRpZW5jZSI6WyJ4IiwieSJdfQ.MobPSo7vboGGhd9fBJiQc400OwXmvrZsFMjLN4CkHzxgtqvDwZGktNztgw1qgTgzb9S4LliDhlWSgwdcbtBNymo47i6VRE2fNNWXX_9ew6wOkTSytgpFZ9WZ2NA1GlX0uqGyg1KAeiX-UYv3JJM2mfVdpWDuyuf7Nxh904ftGGie3KQS8Uklkue366nKctHMRq93-qR-OVSy-J9KkVk86COkfSwRF31_FvPzayUCctmp8IhKWOQ-Tlz4bzPTbyWxLFg2A9Hre6ahvvs6J4S0uhqC_JXezh6yOBf8v0Z8uwmu-FPDYMy47dOj5vxk0aPcyLOuh4hT3QSaPjFEKwb96w]"
+  uris:
+    - "/"
+console:
+  enabled: true
+telegraf:
+  enabled: false
