@@ -1,0 +1,10 @@
+[
+  {
+    "kid": "rsa2048-1",
+    "cert": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyGk2ApHGGTKASQH9ow/U\n/tJoGcg1SPT9nw/dcob5G3wSk3fwd2nDBMjkDVns2XefoZPXATOD6TVUXABsrG8f\naEB9XbJLPQt8Ewf0DgS02dGtf5r1UZ2PZEW5PFfbxnWD2CASvyR+r7Te61zJ2R+/\nEghmBq+rqNiYg/oJmPPSx4tcayrV8h8Y6ImNktVQZH30ijJbdI0HQ8gwbm6SaADW\nNdwCNkBkhnL5XzrXs5UZ9Fozi4IH/hIwV4ZlTA2BNrV6CHE3cPkdoMS9TDuQ6mhD\nWNiOA2pgkM/zqz9ihZvumAmrEB7M4/i+zBdfPHc2f2zcSGLfjanr7ydTZK00DNZZ\neQIDAQAB\n-----END PUBLIC KEY-----\n"
+  },
+  {
+    "kid": "2-hmac",
+    "secret": "i-hope-that-you-change-this-long-default-secret-in-your-app"
+  }
+]

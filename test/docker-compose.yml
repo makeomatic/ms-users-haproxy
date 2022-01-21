@@ -1,0 +1,30 @@
+services:
+  consul:
+    image: consul:1.6
+    hostname: consul
+    ports:
+      - 8500:8500
+
+  tank:
+    image: direvius/yandex-tank  
+    volumes:
+      - ${PWD}/test/load:/var/loadtest
+    entrypoint: "/bin/sh -c"
+    command: "\"tail -f /dev/null\""
+
+
+  haproxy:
+    image: test-haproxy
+    build:
+      context: ../
+    depends_on: 
+      - consul
+    volumes:
+      - ${PWD}/test/config:/usr/local/etc/haproxy
+      - ${PWD}/test/keys:/usr/local/etc/haproxy-keys
+      - ${PWD}/test/server/tracer.lua:/usr/local/etc/haproxy-tracer.lua
+      - ${PWD}/src/verify-jwt.lua:/usr/local/lib/lua/5.3/verify-jwt.lua
+      - ${PWD}/src/verify-jwt:/usr/local/lib/lua/5.3/verify-jwt
+    ports:
+      - 8080:8080
+      - 8081:8081
