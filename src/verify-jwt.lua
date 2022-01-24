@@ -116,6 +116,8 @@ local function verifyJWT(txn)
 
   local rules = consulSource.getRules(tokenBody.username)
   local filterResult = matcher.findMatches(tokenBody, rules)
+  
+  -- core.Info("Processing ".. #rules .. "set")
 
   if filterResult == true then
     setReqParams(txn, 0, 'blacklisted', tokenBody)
@@ -125,51 +127,6 @@ local function verifyJWT(txn)
   setReqParams(txn, 1, 'ok', tokenBody)
 end
 
-
-local function test(txn)
-
-  print_r(consulSource.getRules("6887354771515113472"), true)
-
-  local tData = {
-    cs = "6887354771741605888",
-  }
-  local result = matcher.findMatches(tData, consulSource.getRules("6887354771515113472"))
-  core.log(core.info, string.format("RESULT: %s", result))
-
-  local tData1 = {
-    cs = "somexxx",
-    rt = "6887354771741605888",
-  }
-  local result1 = matcher.findMatches(tData1, consulSource.getRules("6887354771515113472"))
-  core.log(core.info, string.format("RESULT1: %s", result1))
-
-  local tData2 = {
-    cs = "somexxx",
-    rt = "6887354771741605889",
-  }
-  local result2 = matcher.findMatches(tData2, consulSource.getRules("6887354771515113472"))
-  core.log(core.info, string.format("RESULT2: %s", result2))
-
-  local tDataComplex = {
-    iss = "ms-users",
-    iat = 2048,
-    rt = "6887354771741605888",
-  }
-
-  local resultComplex = matcher.findMatches(tDataComplex, {
-    {
-      iss = "ms-users",
-      iat = {
-        gte = 1000,
-        lte = 3000,
-      },
-      rt = "6887354771741605888",
-    }
-  })
-  core.log(core.info, string.format("RESULTCOMPLEX: %s", resultComplex))
-
-
-end
 
 core.register_action('verify-jwt', {'http-req'}, verifyJWT)
 

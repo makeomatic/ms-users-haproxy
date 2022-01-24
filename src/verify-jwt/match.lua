@@ -75,7 +75,8 @@ local function filterString(value, filter)
     return false;
   end
 
-  return strfind(strlower(value), strlower(filter)) ~= nil;
+  -- return strfind(strlower(value), strlower(filter)) ~= nil;
+  return strfind(value, filter) ~= nil;
 end
 
 local function startsWith(value, filter)
@@ -83,7 +84,8 @@ local function startsWith(value, filter)
     return false;
   end
 
-  return strmatch(strlower(value), strlower("^" .. filter)) ~= nil
+  -- return strmatch(strlower(value), strlower("^" .. filter)) ~= nil
+  return strmatch(value, "^" .. filter) ~= nil;
 end
 
 local function eq(value, filter)
@@ -154,10 +156,11 @@ local function matchRule(data, filter)
 end
 
 local function findMatches(data, filters)
-  for _, filter in pairs(filters) do
-      if matchRule(data, filter) == true then
-        return true
-      end
+  for cnt, filter in pairs(filters) do
+    if matchRule(data, filter) == true then
+      core.Info("Match on rule " .. cnt)
+      return true
+    end
   end
 
   return false

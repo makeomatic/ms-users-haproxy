@@ -6,7 +6,7 @@ local config = require "verify-jwt.config"
 require("verify-jwt.print_r")
 
 local json = cjson.new()
-
+local tmove = table.move
 local ruleTable = {}
 local M = {}
 
@@ -19,7 +19,7 @@ local function parseRule(prefix, consulKey, decoded)
     key = string.match(trimmed, "^./(.+)/.+")
   end
 
-  core.log(core.info, string.format("GOT RULE key: %s", key))
+  -- core.log(core.info, string.format("GOT RULE key: %s, %s", key, consulKey))
 
   return key, decoded
 end
@@ -27,7 +27,7 @@ end
 function M.loadRules()
   local stime = core.now()
   local scount = 0
-  local ruleTempTable = {}
+  local ruleTempTable = { g = {}}
   local keyPrefix = config.consul.keyPrefix
   local consulAddr = config.consul.addr
 
@@ -49,7 +49,7 @@ function M.loadRules()
         entry.Value = json.decode(entry.Value)
 
         if entry.Value == nil then
-          core.log(core.err, string.format("Failed to decode rule: %s", entry.Value))
+          core.Alert(string.format("Failed to decode rule: %s", entry.Value))
           goto skip_to_next
         end
 
@@ -65,14 +65,12 @@ function M.loadRules()
     end
   end
 
-  scount = #ruleTempTable
   ruleTable = ruleTempTable
 
-  core.log(
-    core.info,
+  core.Info(
 		string.format(
-      "Loaded %d rules from catalog",
-		  #ruleTempTable + 1
+      "Loaded %s rules from catalog",
+		  #data
     )
   )
 end
@@ -86,13 +84,16 @@ function M.loader()
 end
 
 function M.getRules(userId)
-  local globalRules = ruleTable['g'] or {}
+  local globalRules = ruleTable.g or {}
   local userRules = ruleTable[userId] or {}
 
-  return {
-    table.unpack(globalRules),
-    table.unpack(userRules)
-  }
+  local all = {}
+
+  tmove(globalRules, 1, #globalRules, 1, all)
+  tmove(userRules, 1, #userRules, #all+1, all)
+
+  -- core.Info("Total: " .. #all .. ":GLOBAL " .. #globalRules .. " :USER " .. #userRules)
+  return all
 end
 
 return M
