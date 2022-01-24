@@ -7,7 +7,8 @@
   },
   "scripts": {
     "test": "yarn mdep test run",
-    "semantic-release": "semantic-release"
+    "semantic-release": "semantic-release",
+    "docker-release": "mdep docker release"
   },
   "devDependencies": {
     "@babel/core": "^7.16.10",
