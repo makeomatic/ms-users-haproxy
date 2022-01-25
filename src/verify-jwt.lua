@@ -95,10 +95,6 @@ end
 
 local tokenCheckCache = {}
 
-local function dropCache()
-  tokenCheckCache = {}
-end
-
 local function checkRules(jwtObj)
   local filterResult
   local tokenKey = jwtObj.encodedSignature
@@ -106,16 +102,17 @@ local function checkRules(jwtObj)
 
   local cached = tokenCheckCache[tokenKey]
   local now = core.now().sec
+  local rules = getRules(tokenBody.username)
 
-  if cached ~= nil and cached.ttl > now then 
+  if cached ~= nil and (cached.ttl > now and cached.ruleVersion == rules.ruleVersion) then 
     filterResult = tokenCheckCache[tokenKey].data
   else
-    local rules = getRules(tokenBody.username)
-    filterResult = findMatches(tokenBody, rules)
+    filterResult = findMatches(tokenBody, rules.data)
 
     tokenCheckCache[tokenKey] = {
       ttl = now + config.jwt.cacheTTL,
-      data = filterResult
+      data = filterResult,
+      ruleVersion = rules.ruleVersion,
     }
 
     return filterResult
@@ -153,8 +150,6 @@ local function verifyJWT(txn)
 
   setReqParams(txn, 1, 'ok', tokenBody)
 end
-
-consulSource.onreload = dropCache
 
 core.register_action('verify-jwt', {'http-req'}, verifyJWT)
 

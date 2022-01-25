@@ -46,10 +46,7 @@ local function lt(value, filter)
   if isempty(value) then
     return false;
   end
-  print_r({
-    filter = filter, value = value,
-    res = isnumber(value) < filter 
-  })
+
   return isnumber(value) < filter;
 end
 
@@ -147,11 +144,6 @@ local function findMatches(data, filters)
   for i = 1, #filters do
     local filter = filters[i]
     if matchRule(data, filter) then
-      print_r({
-        m = "Match on rule " .. i,
-        data = data,
-        filter = filter
-      })
       return true
     end
   end

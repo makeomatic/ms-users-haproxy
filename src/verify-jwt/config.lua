@@ -8,8 +8,7 @@ return {
   consul = {
     addr = os.getenv("CONSUL_ADDR") or "consul:8500",
     syncInterval = os.getenv("CONSUL_SYNC_INTERVAL") or 300,
-    keyPrefix = keyPrefix,
-    cacheTTL = os.getenv("CONSUL_CACHE_TTL") or 200
+    keyPrefix = keyPrefix
   },
   jwt = {
     jwksUrl = os.getenv("JWT_JWKS_URL"),

@@ -7,9 +7,10 @@ require("verify-jwt.print_r")
 
 local json = cjson.new()
 local tmove = table.move
+local jsonDecode = json.decode
 
 local M = {
-  cacheVersion = 0,
+  consulModifyIndexMax = 0,
   ruleTable = {},
   ruleCache = {},
 }
@@ -22,8 +23,6 @@ local function parseRule(prefix, consulKey, decoded)
   if type == "u" then
     key = string.match(trimmed, "^./(.+)/.+")
   end
-
-  -- core.log(core.info, string.format("GOT RULE key: %s, %s", key, consulKey))
 
   return key, decoded
 end
@@ -38,7 +37,7 @@ function M.loadRules()
     addr = consulAddr
   })
 
-	core.log(core.info, string.format("Loading rules catalog from %s", consulAddr))
+	core.log(core.debug, string.format("Loading rules catalog from %s", consulAddr))
 
   local data, err = c:kvGet(keyPrefix .. "?recurse=true", true)
 
@@ -47,9 +46,15 @@ function M.loadRules()
 		return
 	end
 
+  local maxIndex = 0
+
   for _, entry in ipairs(data) do
     if type(entry.Value) == "string" then
-        entry.Value = json.decode(entry.Value)
+        entry.Value = jsonDecode(entry.Value)
+        
+        if entry.ModifyIndex > maxIndex then
+          maxIndex = entry.ModifyIndex
+        end
 
         if entry.Value == nil then
           core.Alert(string.format("Failed to decode rule: %s", entry.Value))
@@ -68,19 +73,19 @@ function M.loadRules()
     end
   end
 
-  M.ruleTable = ruleTempTable
-  M.cacheVersion = core.now().sec
+  core.Debug("Indexes: current=" .. M.consulModifyIndexMax .. " received="..maxIndex)
+  -- update rule table only if we have some changes
+  if maxIndex ~= M.consulModifyIndexMax then
+    M.ruleTable = ruleTempTable
+    M.consulModifyIndexMax = maxIndex
 
-  if type(M.onreload) == "function" then
-    M.onreload()
-  end
-
-  core.Info(
-		string.format(
-      "Loaded %s rules from catalog",
-		  #data
+    core.Info(
+      string.format(
+        "Loaded %s rules from catalog",
+        #data
+      )
     )
-  )
+  end
 end
 
 -- rule update runner
@@ -94,8 +99,8 @@ end
 function M.getRules(userId)
   local cached = M.ruleCache[userId]
   
-  if cached ~= nil and cached.version >= M.cacheVersion then
-    return cached.data
+  if cached ~= nil and cached.ruleVersion == M.consulModifyIndexMax then
+    return cached
   end
 
   -- generate new table
@@ -107,12 +112,14 @@ function M.getRules(userId)
   tmove(globalRules, 1, #globalRules, 1, all)
   tmove(userRules, 1, #userRules, #all+1, all)
 
-  M.ruleCache[userId] = {
+  local result = {
     data = all,
-    version = core.now().sec
+    ruleVersion = M.consulModifyIndexMax
   }
+
+  M.ruleCache[userId] = result
   
-  return all
+  return result
 end
 
 return M
