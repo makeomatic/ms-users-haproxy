@@ -7,8 +7,12 @@ require("verify-jwt.print_r")
 
 local json = cjson.new()
 local tmove = table.move
-local ruleTable = {}
-local M = {}
+
+local M = {
+  cacheVersion = 0,
+  ruleTable = {},
+  ruleCache = {},
+}
 
 local function parseRule(prefix, consulKey, decoded)
   local trimmed = string.sub(consulKey, #prefix + 1)
@@ -25,7 +29,6 @@ local function parseRule(prefix, consulKey, decoded)
 end
 
 function M.loadRules()
-  local stime = core.now()
   local scount = 0
   local ruleTempTable = { g = {}}
   local keyPrefix = config.consul.keyPrefix
@@ -65,7 +68,12 @@ function M.loadRules()
     end
   end
 
-  ruleTable = ruleTempTable
+  M.ruleTable = ruleTempTable
+  M.cacheVersion = core.now().sec
+
+  if type(M.onreload) == "function" then
+    M.onreload()
+  end
 
   core.Info(
 		string.format(
@@ -84,15 +92,26 @@ function M.loader()
 end
 
 function M.getRules(userId)
-  local globalRules = ruleTable.g or {}
-  local userRules = ruleTable[userId] or {}
+  local cached = M.ruleCache[userId]
+  
+  if cached ~= nil and cached.version >= M.cacheVersion then
+    return cached.data
+  end
+
+  -- generate new table
+  local globalRules = M.ruleTable.g or {}
+  local userRules = M.ruleTable[userId] or {}
 
   local all = {}
 
   tmove(globalRules, 1, #globalRules, 1, all)
   tmove(userRules, 1, #userRules, #all+1, all)
 
-  -- core.Info("Total: " .. #all .. ":GLOBAL " .. #globalRules .. " :USER " .. #userRules)
+  M.ruleCache[userId] = {
+    data = all,
+    version = core.now().sec
+  }
+  
   return all
 end
 

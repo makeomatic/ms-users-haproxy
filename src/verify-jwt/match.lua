@@ -6,36 +6,16 @@ local strmatch = string.match;
 
 local jsonDecode = cjson.new().decode;
 
-local function catch(what)
-  return what[1]
-end
-
-local function try(what)
-  local status, result = pcall(what[1]);
-  if not status then
-    return what[2](result);
-  end
-
-  return result;
-end
+local tFunction = "function"
+local orField = '_or'
 
 local function isempty(s)
   return s == nil or s == '' or s == false;
 end
 
 local function isnumber(a)
-  return try {
-    function()
-      local num = tonumber(a);
-      return num ~= nil and num or tonumber(jsonDecode(a));
-    end,
-
-    catch {
-      function()
-        return nil;
-      end
-    }
-  }
+  local num = tonumber(a);
+  return num ~= nil and num;
 end
 
 local function gte(value, filter)
@@ -66,7 +46,10 @@ local function lt(value, filter)
   if isempty(value) then
     return false;
   end
-
+  print_r({
+    filter = filter, value = value,
+    res = isnumber(value) < filter 
+  })
   return isnumber(value) < filter;
 end
 
@@ -75,8 +58,7 @@ local function filterString(value, filter)
     return false;
   end
 
-  -- return strfind(strlower(value), strlower(filter)) ~= nil;
-  return strfind(value, filter) ~= nil;
+  return strfind(strlower(value), strlower(filter)) ~= nil;
 end
 
 local function startsWith(value, filter)
@@ -84,8 +66,7 @@ local function startsWith(value, filter)
     return false;
   end
 
-  -- return strmatch(strlower(value), strlower("^" .. filter)) ~= nil
-  return strmatch(value, "^" .. filter) ~= nil;
+  return strmatch(strlower(value), strlower("^" .. filter)) ~= nil
 end
 
 local function eq(value, filter)
@@ -104,7 +85,7 @@ local opTypes = {
 
 local function filter(op, opFilter, fieldValue)
   local thunk = opTypes[op];
-  if type(thunk) ~= "function" then
+  if type(thunk) ~= tFunction then
     return error("not supported op: " .. op);
   end
 
@@ -113,10 +94,13 @@ end
 
 local function matchFilter(valueToFilter, filterValue)
   local isOr = filterValue._or
+  local op
+  local opFilter
 
-  for op, opFilter in pairs(filterValue) do
+  for op, opFilter in next, filterValue do
+  -- for op, opFilter in pairs(filterValue) do
     -- we should skip _or field
-    if op ~= '_or' then
+    if op ~= orField then
       -- dedup?
       local result = filter(op, opFilter, valueToFilter)
       if isOr and result then
@@ -139,11 +123,15 @@ local filterType = {
 
 local function matchRule(data, filter)
   local isOr = filter._or
+  local field, ops
 
-  for field, ops in pairs(filter) do
+  for field, ops in next, filter do
     -- we should skip _or field
-    if field ~= '_or' then
-      local result = filterType[type(ops)](data[field], ops)
+    if field ~= orField then
+      local fn = filterType[type(ops)]
+      local checkData = data[field]
+      local result = fn(checkData, ops)
+
       if isOr and result == true then
         return true
       elseif not isOr and result == false then
@@ -156,9 +144,14 @@ local function matchRule(data, filter)
 end
 
 local function findMatches(data, filters)
-  for cnt, filter in pairs(filters) do
-    if matchRule(data, filter) == true then
-      core.Info("Match on rule " .. cnt)
+  for i = 1, #filters do
+    local filter = filters[i]
+    if matchRule(data, filter) then
+      print_r({
+        m = "Match on rule " .. i,
+        data = data,
+        filter = filter
+      })
       return true
     end
   end

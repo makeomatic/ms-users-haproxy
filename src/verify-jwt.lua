@@ -5,8 +5,11 @@ require "verify-jwt.print_r"
 local matcher = require "verify-jwt.match"
 local consulSource = require "verify-jwt.consul-source"
 local jwks = require "verify-jwt.jwks"
+local config = require "verify-jwt.config"
 
 local json = cjson.new()
+local getRules = consulSource.getRules
+local findMatches = matcher.findMatches
 
 -- Extracts JWT token information using haproxy internal features
 -- parses header and body using `cjson` library
@@ -90,6 +93,35 @@ local function setReqParams(txn, valid, reason, token)
   end
 end
 
+local tokenCheckCache = {}
+
+local function dropCache()
+  tokenCheckCache = {}
+end
+
+local function checkRules(jwtObj)
+  local filterResult
+  local tokenKey = jwtObj.encodedSignature
+  local tokenBody = jwtObj.parsedBody 
+
+  local cached = tokenCheckCache[tokenKey]
+  local now = core.now().sec
+
+  if cached ~= nil and cached.ttl > now then 
+    filterResult = tokenCheckCache[tokenKey].data
+  else
+    local rules = getRules(tokenBody.username)
+    filterResult = findMatches(tokenBody, rules)
+
+    tokenCheckCache[tokenKey] = {
+      ttl = now + config.jwt.cacheTTL,
+      data = filterResult
+    }
+
+    return filterResult
+  end
+end
+
 local function verifyJWT(txn)
   local jwtObj = extractJWTFromHeader(txn)
 
@@ -109,16 +141,11 @@ local function verifyJWT(txn)
 
   local res, msg = validateJWTBody(jwtObj)
   if res == false then
-    core.Alert("EXPIRED TOKEN")
     setReqParams(txn, 0, msg, tokenBody)
     return
   end
 
-  local rules = consulSource.getRules(tokenBody.username)
-  local filterResult = matcher.findMatches(tokenBody, rules)
-  
-  -- core.Info("Processing ".. #rules .. "set")
-
+  local filterResult = checkRules(jwtObj)
   if filterResult == true then
     setReqParams(txn, 0, 'blacklisted', tokenBody)
     return
@@ -127,6 +154,7 @@ local function verifyJWT(txn)
   setReqParams(txn, 1, 'ok', tokenBody)
 end
 
+consulSource.onreload = dropCache
 
 core.register_action('verify-jwt', {'http-req'}, verifyJWT)
 

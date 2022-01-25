@@ -12,11 +12,9 @@ services:
     entrypoint: "/bin/sh -c"
     command: "\"tail -f /dev/null\""
 
-
   haproxy:
-    image: test-haproxy
     build:
-      context: ../
+      context: ${PWD}
     depends_on: 
       - consul
     volumes:
