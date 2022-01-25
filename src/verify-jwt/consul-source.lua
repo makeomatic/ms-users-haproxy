@@ -37,7 +37,7 @@ function M.loadRules()
     addr = consulAddr
   })
 
-	core.log(core.debug, string.format("Loading rules catalog from %s", consulAddr))
+	core.Info(string.format("Loading rules catalog from %s", consulAddr))
 
   local data, err = c:kvGet(keyPrefix .. "?recurse=true", true)
 
@@ -47,6 +47,7 @@ function M.loadRules()
 	end
 
   local maxIndex = 0
+  local count = 0
 
   for _, entry in ipairs(data) do
     if type(entry.Value) == "string" then
@@ -68,7 +69,13 @@ function M.loadRules()
         end
 
         table.insert(ruleTempTable[key], rule)
+        count = count + 1
 
+        if count > 100 then
+          core.yield()
+          count = 0
+        end
+        
         ::skip_to_next::
     end
   end
