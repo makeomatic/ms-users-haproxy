@@ -3,39 +3,19 @@ const { deepStrictEqual } = require('assert')
 const { delay } = require('bluebird')
 
 const axios = require("axios").default
-const Consul = require("consul")
 const ld = require('lodash')
 
 const jwt = require('jsonwebtoken')
 
+const ConsulUtil = require('../util/consul');
+
 const haServer = "http://haproxy:8080"
 const consulServer = "consul"
 const keyPrefix = "microfleet/ms-users/revocation-rules"
+const consulUtil = new ConsulUtil(consulServer, keyPrefix)
 
 axios.defaults.baseURL = haServer
 
-const consul = new Consul({
-  host: consulServer,
-  promisify: true,
-});
-
-const kvGet = (extra = '') => {
-  return consul.kv.get({
-    recurse: true,
-    key: `${keyPrefix}/${extra}`,
-  })
-}
-
-const kvPut = (key, data) => {
-  return consul.kv.set(`${keyPrefix}/${key}`, JSON.stringify(data))
-}
-
-const kvDel = (key = '') => {
-  return consul.kv.del({
-    key: `${keyPrefix}/${key}`,
-    recurse: true,
-  })
-}
 
 const haGet = async (token) => {
   const response = await axios.get('/', {
@@ -204,7 +184,7 @@ describe('HaProxy lua', () => {
       const user = 'foouser';
 
       before(async () => {
-        await kvDel()
+        await consulUtil.kvDel()
       })
 
       const blacklistedResponse = {
@@ -229,27 +209,26 @@ describe('HaProxy lua', () => {
         })
   
         // invalidate 1 access token
-        await kvPut(uRule(firstRefresh), invAccess(secondAccess));
+        await consulUtil.kvPut(uRule(firstRefresh), invAccess(secondAccess));
   
         const thirdAccess = createAccessToken(firstRefresh, {
           iat: Date.now() + 2 * 60 * 60 * 1000,
         })
   
         // invalidate 2 access token
-        await kvPut(uRule(firstRefresh), invAccess(thirdAccess));
+        await consulUtil.kvPut(uRule(firstRefresh), invAccess(thirdAccess));
         await delay(2000);
   
         const thirdJwtRes = await haGet(signHmac(thirdAccess));
         const secondJwtRes = await haGet(signHmac(secondAccess));
         const firstJwtRes = await haGet(signHmac(firstAccess));
-  
-  
+        
         validateResponse(firstJwtRes, blacklistedResponse)
         validateResponse(secondJwtRes, blacklistedResponse)
         validateResponse(thirdJwtRes, okResponse)
   
         // invalidate refresh token
-        await kvPut(uRule(firstRefresh), invRtRule(firstRefresh));
+        await consulUtil.kvPut(uRule(firstRefresh), invRtRule(firstRefresh));
         await delay(2000);
   
         const thirdInvJwtRes = await haGet(signHmac(thirdAccess));
@@ -267,7 +246,7 @@ describe('HaProxy lua', () => {
         const newJwtRes = await haGet(signHmac(newPair.access));
   
         // invalidate all tokens
-        await kvPut(gRule(), invAll(newPair.refresh));
+        await consulUtil.kvPut(gRule(), invAll(newPair.refresh));
         await delay(2000);
   
         const newJwtBlockedRes = await haGet(signHmac(newPair.access));
@@ -283,25 +262,25 @@ describe('HaProxy lua', () => {
           ...base,
         })
 
-        await kvPut(uRule({ username: 'gt' }), { gtVal: { gt: 10 }})
-        await kvPut(uRule({ username: 'lt' }), { ltVal: { lt: 10 }})
-        await kvPut(uRule({ username: 'gte' }), { gteVal: { gte: 10 }})
-        await kvPut(uRule({ username: 'lte' }), { lteVal: { lte: 10 }})
+        await consulUtil.kvPut(uRule({ username: 'gt' }), { gtVal: { gt: 10 }})
+        await consulUtil.kvPut(uRule({ username: 'lt' }), { ltVal: { lt: 10 }})
+        await consulUtil.kvPut(uRule({ username: 'gte' }), { gteVal: { gte: 10 }})
+        await consulUtil.kvPut(uRule({ username: 'lte' }), { lteVal: { lte: 10 }})
 
-        await kvPut(uRule({ username: 'eq' }), { eqVal: { eq: 'some' }})
-        await kvPut(uRule({ username: 'eqNum' }), { eqVal: { eq: 10 }})
-        await kvPut(uRule({ username: 'eqString' }), { eqVal: 'some' })
+        await consulUtil.kvPut(uRule({ username: 'eq' }), { eqVal: { eq: 'some' }})
+        await consulUtil.kvPut(uRule({ username: 'eqNum' }), { eqVal: { eq: 10 }})
+        await consulUtil.kvPut(uRule({ username: 'eqString' }), { eqVal: 'some' })
         
-        await kvPut(uRule({ username: 'match' }), { matchVal: { match : 'some777some' } })
-        await kvPut(uRule({ username: 'startsWith' }), { swVal: { sw: 'some' }})
+        await consulUtil.kvPut(uRule({ username: 'match' }), { matchVal: { match : 'some777some' } })
+        await consulUtil.kvPut(uRule({ username: 'startsWith' }), { swVal: { sw: 'some' }})
 
-        await kvPut(uRule({ username: 'topLevelOr' }), {
+        await consulUtil.kvPut(uRule({ username: 'topLevelOr' }), {
           _or: true,
           swVal: { sw: 'some' },
           eqVal: 'some'
         })
 
-        await kvPut(uRule({ username: 'operOr' }), {
+        await consulUtil.kvPut(uRule({ username: 'operOr' }), {
           swVal: {
             sw: 'some',
             _or: true,
