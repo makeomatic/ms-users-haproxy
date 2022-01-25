@@ -2,8 +2,16 @@ services:
   consul:
     image: consul:1.6
     hostname: consul
+    command: "agent -dev -log-level WARN -client 0.0.0.0"
     ports:
       - 8500:8500
+
+  tank:
+    image: direvius/yandex-tank  
+    volumes:
+      - ${PWD}/test/load:/var/loadtest
+    entrypoint: "/bin/sh -c"
+    command: "\"tail -f /dev/null\""
 
   haproxy:
     build:
@@ -19,3 +27,4 @@ services:
     ports:
       - 8080:8080
       - 8081:8081
+    command: "haproxy -f /usr/local/etc/haproxy/haproxy-load.cfg"
