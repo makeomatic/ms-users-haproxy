@@ -2,7 +2,7 @@ phantom:
   address: haproxy:8080
   load_profile:
     load_type: rps
-    schedule: line(1, 2000, 5m)
+    schedule: line(1, 100, 5m)
   header_http: "1.1"
   ammo_type: uri
   ammofile: ammo.txt

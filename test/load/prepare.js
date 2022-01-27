@@ -24,26 +24,11 @@ async function loadKeys() {
   }
 }
 
-const ruleCount = 5
+const ruleCount = 100
 let privateKeys;
 let total = 0;
 
-function createCmds(userId, r) {
-  const uKey = JSON.stringify({
-    _or: true,
-    cs: `${userId}-${r}`,
-    rt: `${userId}-0`,
-    iat: {
-      lte: 777777,
-      gte: 111111
-    },
-    aud: {
-      match: "no-match",
-      _or: true,
-      sw: "x-no-start"
-    }
-  })
-
+function createGlobalCmds(r) {
   const gKey = JSON.stringify({
     _or: true,
     cs: `g-${r}`,
@@ -63,12 +48,6 @@ function createCmds(userId, r) {
     {
       KV: {
         Verb: 'set',
-        Key: `microfleet/ms-users/revocation-rules/u/${userId}/${userId}-${r}`,
-        Value: Buffer.from(uKey).toString('base64')
-      } 
-    }, {
-      KV: {
-        Verb: 'set',
         Key: `microfleet/ms-users/revocation-rules/g/${r}`,
         Value: Buffer.from(gKey).toString('base64')
       } 
@@ -76,20 +55,56 @@ function createCmds(userId, r) {
   ]
 }
 
-async function createUserRules(userIds = []) {
-  await consulUtil.kvDel()
-  console.debug('RULES DELETED')
-  
+function createUserCmds(userId, r) {
+  const uKey = JSON.stringify({
+    _or: true,
+    cs: `${userId}-${r}`,
+    rt: `${userId}-0`,
+    iat: {
+      lte: 777777,
+      gte: 111111
+    },
+    aud: {
+      match: "no-match",
+      _or: true,
+      sw: "x-no-start"
+    }
+  })
 
+  return [
+    {
+      KV: {
+        Verb: 'set',
+        Key: `microfleet/ms-users/revocation-rules/u/${userId}/${userId}-${r}`,
+        Value: Buffer.from(uKey).toString('base64')
+      } 
+    }
+  ]
+}
+
+async function createGlobalRules() {
+  const globalPairs = []
+  ld.range(0, ruleCount).forEach((r) => {
+    globalPairs.push(... createGlobalCmds(r))
+  })
+
+  const chunks = ld.chunk(globalPairs, 60)
+  await map(chunks, async (chunk) => {
+    total += chunk.length
+    await consulUtil.consul.transaction.create(chunk)
+  }, { concurrency: 5 })
+}
+
+async function createUserRules(userIds = []) {
   await map(userIds, async (userId) => {
     const pairs = []
     ld.range(0, ruleCount).forEach((r) => {
       pairs.push(
-        ... createCmds(userId, r)
+        ... createUserCmds(userId, r)
       )
     })
 
-    const chunks = ld.chunk(pairs, 30)
+    const chunks = ld.chunk(pairs, 60)
 
     await map(chunks, async (chunk) => {
       total += chunk.length
@@ -128,7 +143,7 @@ async function start() {
   privateKeys = await loadKeys()
   const users = []
 
-  ld.range(20000).forEach((i) => {
+  ld.range(4000).forEach((i) => {
     users.push(`foo-${i}`, `bar-${i}`, `baz-${i}`)
   })
   
@@ -141,8 +156,15 @@ async function start() {
     console.debug(`Created ${total} rules`)
   }, 5000)
   
-  await createUserRules(users)
+  await consulUtil.kvDel()
+  console.debug('RULES DELETED')
   
+  await createGlobalRules()
+  console.debug('GLOBAL CREATED')
+
+  await createUserRules(users)
+  console.debug('USER CREATED')
+
   clearInterval(fn)
 
   console.debug('Done Create rules...') 
