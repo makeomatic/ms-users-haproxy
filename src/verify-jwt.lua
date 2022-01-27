@@ -102,17 +102,24 @@ local function checkRules(jwtObj)
 
   local cached = tokenCheckCache[tokenKey]
   local now = core.now().sec
-  local rules = getRules(tokenBody.username)
 
-  if cached ~= nil and (cached.ttl > now and cached.ruleVersion == rules.ruleVersion) then 
+  local userRules = getRules(tokenBody.username)
+  local globalRules = getRules("g")
+
+  if cached ~= nil and (cached.ttl > now and cached.ruleVersion == userRules.ruleVersion) then 
     filterResult = tokenCheckCache[tokenKey].data
   else
-    filterResult = findMatches(tokenBody, rules.data)
+    local globResult = findMatches(tokenBody, globalRules.data)
+    globResult = filterResult
+    
+    if globResult == false then
+      filterResult = findMatches(tokenBody, userRules.data)
+    end
 
     tokenCheckCache[tokenKey] = {
       ttl = now + config.jwt.cacheTTL,
       data = filterResult,
-      ruleVersion = rules.ruleVersion,
+      ruleVersion = userRules.ruleVersion,
     }
 
     return filterResult

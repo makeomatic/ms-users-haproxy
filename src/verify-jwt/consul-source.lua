@@ -1,5 +1,7 @@
 local cjson  = require "cjson.safe"
-local consul = require "consul"
+local consul = require "verify-jwt.mod-consul"
+local base64 = require "base64"
+local socket = require "socket"
 
 local config = require "verify-jwt.config"
 
@@ -9,9 +11,18 @@ local json = cjson.new()
 local tmove = table.move
 local jsonDecode = json.decode
 
+local function getMemTable()
+  return {
+    rules = { g = {} },
+    maxIndex = 0,
+    count = 0,
+  }
+end
+
+
 local M = {
   consulModifyIndexMax = 0,
-  ruleTable = {},
+  store = getMemTable(),
   ruleCache = {},
 }
 
@@ -27,9 +38,93 @@ local function parseRule(prefix, consulKey, decoded)
   return key, decoded
 end
 
+local function getConsulKeys(c, key, separator)
+  local query = key .. "?separator=" .. (separator or "/").."&keys=1"
+  local keys, err = c:kvKeys(query, true)
+  
+  if err ~= nil then
+		core.log(core.err, string.format("Failed to retrieved keys listing[%s]: %s", query, err))
+		return {}
+	end
+
+  return keys
+end
+
+local function extractData(memTable, data)
+  local keyPrefix = config.consul.keyPrefix
+
+  for _, row in ipairs(data) do
+    local entry = row.KV
+    local decoded = base64.decode(entry.Value)
+    entry.Value = jsonDecode(decoded)
+    
+    if entry.ModifyIndex > memTable.maxIndex then
+      memTable.maxIndex = entry.ModifyIndex
+    end
+
+    if entry.Value == nil then
+      core.Alert(string.format("Failed to decode rule: %s", entry.Value))
+      goto skip_to_next
+    end
+
+    local key, rule = parseRule(keyPrefix, entry.Key, entry.Value)
+
+    if memTable.rules[key] == nil then
+      memTable.rules[key] = {}
+    end
+
+    table.insert(memTable.rules[key], rule)
+    
+    memTable.count = memTable.count + 1
+
+    if memTable.count % 5000 == 0 then
+      core.yield()
+    end
+
+    ::skip_to_next::
+  end
+
+  return memTable
+end
+
+local function getConsulValues(c, prefixes, memTable)
+  local result = memTable
+  local queries = {}
+
+  for i = 1, #prefixes, 1 do
+    queries[#queries+1] = {
+      KV = {
+        verb="get-tree",
+        key=prefixes[i]
+      }
+    }
+  end
+
+  local data, err = c:trx(queries, true)
+
+  if err ~= nil then
+    core.log(core.err, string.format("Failed to retrieve rule listing[%s]: %s", prefix, err))
+    return nil
+  end
+
+  result = extractData(memTable, data.Results)
+
+  return result
+end
+
+function slice(tbl, first, last, step)
+  local sliced = {}
+
+  for i = first or 1, last or #tbl, step or 1 do
+    sliced[#sliced+1] = tbl[i]
+  end
+
+  return sliced
+end
+
 function M.loadRules()
   local scount = 0
-  local ruleTempTable = { g = {}}
+
   local keyPrefix = config.consul.keyPrefix
   local consulAddr = config.consul.addr
 
@@ -37,59 +132,36 @@ function M.loadRules()
     addr = consulAddr
   })
 
+  local stime = socket.gettime()
+
 	core.Info(string.format("Loading rules catalog from %s", consulAddr))
 
-  local data, err = c:kvGet(keyPrefix .. "?recurse=true", true)
+  local store = getMemTable()
+  local keys = getConsulKeys(c, keyPrefix)
 
-  if err ~= nil then
-		core.log(core.err, string.format("Failed to retrieve rule listing: %s", err))
-		return
-	end
-
-  local maxIndex = 0
-  local count = 0
-
-  for _, entry in ipairs(data) do
-    if type(entry.Value) == "string" then
-        entry.Value = jsonDecode(entry.Value)
-        
-        if entry.ModifyIndex > maxIndex then
-          maxIndex = entry.ModifyIndex
-        end
-
-        if entry.Value == nil then
-          core.Alert(string.format("Failed to decode rule: %s", entry.Value))
-          goto skip_to_next
-        end
-
-        local key, rule = parseRule(keyPrefix, entry.Key, entry.Value)
-
-        if ruleTempTable[key] == nil then
-          ruleTempTable[key] = {}
-        end
-
-        table.insert(ruleTempTable[key], rule)
-        count = count + 1
-
-        if count > 100 then
-          core.yield()
-          count = 0
-        end
-        
-        ::skip_to_next::
+  local step = 10
+  
+  for _, key in pairs(keys) do
+    local users = getConsulKeys(c, key)
+    for i = 1, #users, step do
+      local keysToGet = slice(users, i, i + step - 1)
+      store = getConsulValues(c, keysToGet, store)
     end
   end
 
-  core.Debug("Indexes: current=" .. M.consulModifyIndexMax .. " received="..maxIndex)
+
+  core.Info("Load took: " .. socket.gettime() - stime)
+  core.Info("Indexes: current=" .. M.consulModifyIndexMax .. " received=".. store.maxIndex)
+
   -- update rule table only if we have some changes
-  if maxIndex ~= M.consulModifyIndexMax then
-    M.ruleTable = ruleTempTable
-    M.consulModifyIndexMax = maxIndex
+  if store.maxIndex ~= M.consulModifyIndexMax then
+    M.store = store
+    M.consulModifyIndexMax = store.maxIndex
 
     core.Info(
       string.format(
         "Loaded %s rules from catalog",
-        #data
+        M.store.count
       )
     )
   end
@@ -110,22 +182,15 @@ function M.getRules(userId)
     return cached
   end
 
-  -- generate new table
-  local globalRules = M.ruleTable.g or {}
-  local userRules = M.ruleTable[userId] or {}
-
-  local all = {}
-
-  tmove(globalRules, 1, #globalRules, 1, all)
-  tmove(userRules, 1, #userRules, #all+1, all)
+  local userRules = M.store.rules[userId] or {}
 
   local result = {
-    data = all,
+    data = userRules,
     ruleVersion = M.consulModifyIndexMax
   }
 
   M.ruleCache[userId] = result
-  
+
   return result
 end
 
