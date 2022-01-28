@@ -77,7 +77,7 @@ local function extractData(memTable, data)
     
     memTable.count = memTable.count + 1
 
-    if memTable.count % 5000 == 0 then
+    if memTable.count % 5 == 0 then
       core.yield()
     end
 
@@ -139,10 +139,11 @@ function M.loadRules()
   local store = getMemTable()
   local keys = getConsulKeys(c, keyPrefix)
 
-  local step = 10
+  local step = 14
   
   for _, key in pairs(keys) do
     local users = getConsulKeys(c, key)
+    core.yield()
     for i = 1, #users, step do
       local keysToGet = slice(users, i, i + step - 1)
       store = getConsulValues(c, keysToGet, store)

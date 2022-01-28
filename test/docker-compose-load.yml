@@ -14,6 +14,7 @@ services:
     command: "\"tail -f /dev/null\""
 
   haproxy:
+    hostname: ha1
     build:
       context: ${PWD}
     depends_on: 
@@ -24,7 +25,19 @@ services:
       - ${PWD}/test/server/tracer.lua:/usr/local/etc/haproxy-tracer.lua
       - ${PWD}/src/verify-jwt.lua:/usr/local/lib/lua/5.3/verify-jwt.lua
       - ${PWD}/src/verify-jwt:/usr/local/lib/lua/5.3/verify-jwt
+      - ${PWD}/test/consul-template:/rules
     ports:
       - 8080:8080
       - 8081:8081
     command: "haproxy -f /usr/local/etc/haproxy/haproxy-load.cfg"
+
+  consul-template:
+    depends_on:
+      - consul
+    restart: always
+    command: "-log-level debug -consul-addr=consul:8500 -consul-retry -consul-retry-attempts=3 -template=/templates/test.tmpl:/templates/revocation-rules.conf:\"/bin/docker kill -s HUP test_haproxy_1 || true\""
+    image: makeomatic/consul-template:0.19.5
+    volumes:
+      - ${PWD}/test/consul-template:/templates
+      - /var/run/docker.sock:/tmp/docker.sock
+      

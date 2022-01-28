@@ -112,7 +112,6 @@ local function hsSignatureIsValid(tokenObj, secret)
   return checksum == tokenObj.signature
 end
 
-
 local vFn = {
   string = hsSignatureIsValid,
   userdata = rsSignatureIsValid

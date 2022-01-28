@@ -3,9 +3,10 @@ local cjson = require("cjson.safe")
 require "verify-jwt.print_r"
 
 local matcher = require "verify-jwt.match"
-local consulSource = require "verify-jwt.consul-source"
+local consulSource = require "verify-jwt.consul-hdd-source"
 local jwks = require "verify-jwt.jwks"
 local config = require "verify-jwt.config"
+local socket = require "socket"
 
 local json = cjson.new()
 local getRules = consulSource.getRules
@@ -106,24 +107,23 @@ local function checkRules(jwtObj)
   local userRules = getRules(tokenBody.username)
   local globalRules = getRules("g")
 
-  if cached ~= nil and (cached.ttl > now and cached.ruleVersion == userRules.ruleVersion) then 
+  if cached ~= nil and cached.ttl > now then 
     filterResult = tokenCheckCache[tokenKey].data
   else
-    local globResult = findMatches(tokenBody, globalRules.data)
-    globResult = filterResult
+    local globResult = findMatches(tokenBody, globalRules)
+    filterResult = globResult
     
-    if globResult == false then
-      filterResult = findMatches(tokenBody, userRules.data)
+    if not globResult then
+      filterResult = findMatches(tokenBody, userRules)
     end
 
     tokenCheckCache[tokenKey] = {
       ttl = now + config.jwt.cacheTTL,
       data = filterResult,
-      ruleVersion = userRules.ruleVersion,
     }
-
-    return filterResult
   end
+
+  return filterResult
 end
 
 local function verifyJWT(txn)
@@ -149,11 +149,17 @@ local function verifyJWT(txn)
     return
   end
 
+  -- local stime = socket.gettime()
+  
   local filterResult = checkRules(jwtObj)
+  
+  -- core.Info("Check time: " .. socket.gettime() - stime)
+
   if filterResult == true then
     setReqParams(txn, 0, 'blacklisted', tokenBody)
     return
   end
+
 
   setReqParams(txn, 1, 'ok', tokenBody)
 end
@@ -161,7 +167,7 @@ end
 core.register_action('verify-jwt', {'http-req'}, verifyJWT)
 
 -- start pollers
-core.register_task(consulSource.loader)
+-- core.register_task(consulSource.loader)
 core.register_task(jwks.loader)
 
 -- initial load

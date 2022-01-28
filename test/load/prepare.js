@@ -143,7 +143,7 @@ async function start() {
   privateKeys = await loadKeys()
   const users = []
 
-  ld.range(4000).forEach((i) => {
+  ld.range(1000).forEach((i) => {
     users.push(`foo-${i}`, `bar-${i}`, `baz-${i}`)
   })
   
@@ -168,7 +168,7 @@ async function start() {
   clearInterval(fn)
 
   console.debug('Done Create rules...') 
-  console.debug('tokens', userTokens)
+  console.debug('tokens', userTokens.map((t) => `curl --header "Authorization: JWT ${t}" localhost:8080`))
 
   await createConfig()
   await createAmmo(userTokens)
