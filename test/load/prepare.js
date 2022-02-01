@@ -24,7 +24,7 @@ async function loadKeys() {
   }
 }
 
-const ruleCount = 100
+const ruleCount = 22
 let privateKeys;
 let total = 0;
 

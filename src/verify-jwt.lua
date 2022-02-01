@@ -3,7 +3,7 @@ local cjson = require("cjson.safe")
 require "verify-jwt.print_r"
 
 local matcher = require "verify-jwt.match"
-local consulSource = require "verify-jwt.consul-hdd-source"
+local consulSource = require "verify-jwt.consul-realtime-query"
 local jwks = require "verify-jwt.jwks"
 local config = require "verify-jwt.config"
 local socket = require "socket"
@@ -101,7 +101,7 @@ local function checkRules(jwtObj)
   local tokenKey = jwtObj.encodedSignature
   local tokenBody = jwtObj.parsedBody 
 
-  local cached = tokenCheckCache[tokenKey]
+  local cached = nil -- tokenCheckCache[tokenKey]
   local now = core.now().sec
 
   local userRules = getRules(tokenBody.username)
@@ -150,7 +150,7 @@ local function verifyJWT(txn)
   end
 
   -- local stime = socket.gettime()
-  
+
   local filterResult = checkRules(jwtObj)
   
   -- core.Info("Check time: " .. socket.gettime() - stime)
@@ -168,8 +168,8 @@ core.register_action('verify-jwt', {'http-req'}, verifyJWT)
 
 -- start pollers
 -- core.register_task(consulSource.loader)
-core.register_task(jwks.loader)
+-- core.register_task(jwks.loader)
 
 -- initial load
-core.register_init(consulSource.loadRules)
+-- core.register_init(consulSource.loadRules)
 core.register_init(jwks.loadKeys)

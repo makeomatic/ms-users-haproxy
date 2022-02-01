@@ -9,14 +9,15 @@ const consulServer = "localhost"
 const keyPrefix = "microfleet/ms-users/revocation-rules"
 const consulUtil = new ConsulUtil({ host: consulServer }, keyPrefix)
 
-
+let cnt = 0
 async function start() {
   while (true) {
-    await delay(300);
-    await consulUtil.kvPut('u/dumb', {
+    await delay(1000);
+    await consulUtil.kvPut(`u/dumb/r-${cnt}`, {
       username: 'dumb',
       rt: '2020'
     })
+    cnt++
   }
 }
 
