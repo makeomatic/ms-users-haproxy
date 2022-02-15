@@ -2,15 +2,11 @@ local cjson = require("cjson.safe")
 
 require "verify-jwt.print_r"
 
-local matcher = require "verify-jwt.match"
-local consulSource = require "verify-jwt.consul-realtime-query"
 local jwks = require "verify-jwt.jwks"
 local config = require "verify-jwt.config"
 local socket = require "socket"
 
 local json = cjson.new()
-local getRules = consulSource.getRules
-local findMatches = matcher.findMatches
 
 -- Extracts JWT token information using haproxy internal features
 -- parses header and body using `cjson` library
@@ -94,36 +90,39 @@ local function setReqParams(txn, valid, reason, token)
   end
 end
 
-local tokenCheckCache = {}
-
-local function checkRules(jwtObj)
-  local filterResult
-  local tokenKey = jwtObj.encodedSignature
-  local tokenBody = jwtObj.parsedBody 
-
-  local cached = nil -- tokenCheckCache[tokenKey]
-  local now = core.now().sec
-
-  local userRules = getRules(tokenBody.username)
-  local globalRules = getRules("g")
-
-  if cached ~= nil and cached.ttl > now then 
-    filterResult = tokenCheckCache[tokenKey].data
-  else
-    local globResult = findMatches(tokenBody, globalRules)
-    filterResult = globResult
-    
-    if not globResult then
-      filterResult = findMatches(tokenBody, userRules)
+local function selectJwtBackend()
+  for _, backend in pairs(core.backends) do
+    if backend and backend.name:sub(1, 10) == 'jwt-server' then
+      for _, server in pairs(backend.servers) do
+        local stats = server:get_stats()
+        if stats['status'] == 'UP' then
+          return server:get_addr()
+        else
+          core.Debug(backend.name .. " -> " .. server:get_addr() .. "- DOWN")
+        end
+      end
     end
-
-    tokenCheckCache[tokenKey] = {
-      ttl = now + config.jwt.cacheTTL,
-      data = filterResult,
-    }
   end
 
-  return filterResult
+  return nil
+end
+
+local function checkRules(jwtObj)
+  local httpclient = core.httpclient()
+  local backend = selectJwtBackend()
+
+  if backend == nil then
+    return false, "no-backend"
+  end
+
+  local url = "http://" .. backend
+  local result = httpclient:post({ url = url, body = jwtObj.body})
+
+  if result.status == 0 then
+    return false, "backend-unavail"
+  end
+  
+  return result.body == "ok", result.body
 end
 
 local function verifyJWT(txn)
@@ -143,20 +142,14 @@ local function verifyJWT(txn)
 
   local tokenBody = jwtObj.parsedBody
 
-  local res, msg = validateJWTBody(jwtObj)
-  if res == false then
-    setReqParams(txn, 0, msg, tokenBody)
-    return
-  end
-
   -- local stime = socket.gettime()
-
-  local filterResult = checkRules(jwtObj)
+  
+  local filterResult, reason = checkRules(jwtObj)
   
   -- core.Info("Check time: " .. socket.gettime() - stime)
 
-  if filterResult == true then
-    setReqParams(txn, 0, 'blacklisted', tokenBody)
+  if filterResult == false then
+    setReqParams(txn, 0, reason, tokenBody)
     return
   end
 
@@ -167,9 +160,7 @@ end
 core.register_action('verify-jwt', {'http-req'}, verifyJWT)
 
 -- start pollers
--- core.register_task(consulSource.loader)
--- core.register_task(jwks.loader)
+core.register_task(jwks.loader)
 
 -- initial load
--- core.register_init(consulSource.loadRules)
 core.register_init(jwks.loadKeys)
