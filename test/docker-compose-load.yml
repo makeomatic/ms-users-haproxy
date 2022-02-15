@@ -23,21 +23,9 @@ services:
       - ${PWD}/test/config:/usr/local/etc/haproxy
       - ${PWD}/test/keys:/usr/local/etc/haproxy-keys
       - ${PWD}/test/server/tracer.lua:/usr/local/etc/haproxy-tracer.lua
-      - ${PWD}/src/verify-jwt.lua:/usr/local/lib/lua/5.3/verify-jwt.lua
-      - ${PWD}/src/verify-jwt:/usr/local/lib/lua/5.3/verify-jwt
-      - ${PWD}/test/consul-template:/rules
+      - ${PWD}/src/lua/verify-jwt.lua:/usr/local/lib/lua/5.3/verify-jwt.lua
+      - ${PWD}/src/lua/verify-jwt:/usr/local/lib/lua/5.3/verify-jwt
     ports:
       - 8080:8080
       - 8081:8081
-    command: "haproxy -f /usr/local/etc/haproxy/haproxy-load.cfg"
-
-  # consul-template:
-  #   depends_on:
-  #     - consul
-  #   restart: always
-  #   command: "-wait 10s:20s -log-level debug -consul-addr=consul:8500 -consul-retry -consul-retry-attempts=3 -template=/templates/test.tmpl:/templates/revocation-rules.conf:\"/bin/docker kill -s HUP test_haproxy_1 || true\""
-  #   image: makeomatic/consul-template:0.19.5
-  #   volumes:
-  #     - ${PWD}/test/consul-template:/templates
-  #     - /var/run/docker.sock:/tmp/docker.sock
-      
+    command: "haproxy -f /usr/local/etc/haproxy/haproxy-load.cfg"    

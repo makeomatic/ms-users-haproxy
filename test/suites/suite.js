@@ -6,6 +6,7 @@ const axios = require("axios").default
 const ld = require('lodash')
 
 const jwt = require('jsonwebtoken')
+const app = require('../../src/token-server');
 
 const ConsulUtil = require('../util/consul');
 
@@ -15,7 +16,6 @@ const keyPrefix = "microfleet/ms-users/revocation-rules"
 const consulUtil = new ConsulUtil(consulServer, keyPrefix)
 
 axios.defaults.baseURL = haServer
-
 
 const haGet = async (token) => {
   const response = await axios.get('/', {
@@ -53,6 +53,13 @@ describe('HaProxy lua', () => {
       // es: await fs.readFile(`${__dirname}/../keys/alpine-es256-private.pem`, 'utf-8'),
       hs: 'i-hope-that-you-change-this-long-default-secret-in-your-app'
     }
+
+    await app.listen(4000, '0.0.0.0');
+    await delay(1000);
+  })
+
+  after(async () => {
+    await app.close();
   })
 
   describe('HS', () => {
@@ -65,7 +72,7 @@ describe('HaProxy lua', () => {
       }
 
       const res = await haGet(signHmac(data))
-
+      console.debug(res);
       validateResponse(res, {
         reason: 'ok',
         valid: '1',
@@ -88,7 +95,7 @@ describe('HaProxy lua', () => {
 
       validateResponse(res, {
         valid: '0',
-        reason: 'expired',
+        reason: 'E_TKN_EXPIRE',
         'payload-username': '777444777',
         'payload-audience': '["x","y"]',
         'payload-iat': `${data.iat}.0`,
@@ -131,7 +138,7 @@ describe('HaProxy lua', () => {
 
       validateResponse(res, {
         valid: '0',
-        reason: 'expired',
+        reason: 'E_TKN_EXPIRE',
         'payload-iat': `${data.iat}.0`,
         'payload-exp': `${data.exp}.0`,
         'payload-audience': '["x","y"]',
@@ -173,12 +180,12 @@ describe('HaProxy lua', () => {
       return { refresh, access }
     }
 
-    const invRtRule = (rt) => ({ _or: true, rt: rt.cs, cs: rt.cs });
-    const invAll = (rt) => ({ iat: { lte: Date.now() }, username: rt.username });
-    const invAccess = (newAccess) => ({ rt: newAccess.rt, iat: { lt: newAccess.iat }, });
+    const invRtRule = (rt) => (JSON.stringify({ _or: true, rt: rt.cs, cs: rt.cs }));
+    const invAll = (rt) => (JSON.stringify({ iat: { lte: Date.now() }, username: rt.username }));
+    const invAccess = (newAccess) => (JSON.stringify({ rt: newAccess.rt, iat: { lt: newAccess.iat }, }));
 
-    const uRule = (rt) => `u/${rt.username}/${tid++}`;
-    const gRule = () => `g/${tid++}`;
+    const uRule = (rt) => rt.username;
+    const gRule = () => 'g';
 
     describe('token-validation', () => {
       const user = 'foouser';
@@ -189,7 +196,7 @@ describe('HaProxy lua', () => {
 
       const blacklistedResponse = {
         valid: '0',
-        reason: 'blacklisted',
+        reason: 'E_TKN_INVALID',
         'payload-iss': 'ms-users',
         'payload-username': user
       }
@@ -202,21 +209,23 @@ describe('HaProxy lua', () => {
       }
 
       it('should validate tokens', async () => {
+        const { revocationRulesManager } = app.service;
+
         const { refresh: firstRefresh, access: firstAccess } = createTokenPair(user);
         
         const secondAccess = createAccessToken(firstRefresh, {
           iat: Date.now() + 1 * 60 * 60 * 1000,
         })
-  
+
         // invalidate 1 access token
-        await consulUtil.kvPut(uRule(firstRefresh), invAccess(secondAccess));
+        await revocationRulesManager.add(uRule(firstRefresh), invAccess(secondAccess));
   
         const thirdAccess = createAccessToken(firstRefresh, {
           iat: Date.now() + 2 * 60 * 60 * 1000,
         })
   
         // invalidate 2 access token
-        await consulUtil.kvPut(uRule(firstRefresh), invAccess(thirdAccess));
+        await revocationRulesManager.add(uRule(firstRefresh), invAccess(thirdAccess));
         await delay(2000);
   
         const thirdJwtRes = await haGet(signHmac(thirdAccess));
@@ -228,7 +237,7 @@ describe('HaProxy lua', () => {
         validateResponse(thirdJwtRes, okResponse)
   
         // invalidate refresh token
-        await consulUtil.kvPut(uRule(firstRefresh), invRtRule(firstRefresh));
+        await revocationRulesManager.add(uRule(firstRefresh), invRtRule(firstRefresh));
         await delay(2000);
   
         const thirdInvJwtRes = await haGet(signHmac(thirdAccess));
@@ -241,12 +250,14 @@ describe('HaProxy lua', () => {
       })
 
       it('should validate tokens #global', async () => {
+        const { revocationRulesManager } = app.service;
+
         // sign new tokens
         const newPair = createTokenPair(user);
         const newJwtRes = await haGet(signHmac(newPair.access));
   
         // invalidate all tokens
-        await consulUtil.kvPut(gRule(), invAll(newPair.refresh));
+        await revocationRulesManager.add(gRule(), invAll(newPair.refresh));
         await delay(2000);
   
         const newJwtBlockedRes = await haGet(signHmac(newPair.access));
@@ -256,37 +267,40 @@ describe('HaProxy lua', () => {
       })
 
       it('#rules and #_or', async () => {
+        const { revocationRulesManager } = app.service;
+
         const accessTokenData = createAccessToken({
           cs: 'xid',
           username: user,
           ...base,
         })
 
-        await consulUtil.kvPut(uRule({ username: 'gt' }), { gtVal: { gt: 10 }})
-        await consulUtil.kvPut(uRule({ username: 'lt' }), { ltVal: { lt: 10 }})
-        await consulUtil.kvPut(uRule({ username: 'gte' }), { gteVal: { gte: 10 }})
-        await consulUtil.kvPut(uRule({ username: 'lte' }), { lteVal: { lte: 10 }})
+        await revocationRulesManager.add(uRule({ username: 'gt' }), JSON.stringify({ gtVal: { gt: 10 }}))
+        await revocationRulesManager.add(uRule({ username: 'lt' }), JSON.stringify({ ltVal: { lt: 10 }}))
+        await revocationRulesManager.add(uRule({ username: 'gte' }), JSON.stringify({ gteVal: { gte: 10 }}))
+        await revocationRulesManager.add(uRule({ username: 'lte' }), JSON.stringify({ lteVal: { lte: 10 }}))
 
-        await consulUtil.kvPut(uRule({ username: 'eq' }), { eqVal: { eq: 'some' }})
-        await consulUtil.kvPut(uRule({ username: 'eqNum' }), { eqVal: { eq: 10 }})
-        await consulUtil.kvPut(uRule({ username: 'eqString' }), { eqVal: 'some' })
+        await revocationRulesManager.add(uRule({ username: 'eq' }), JSON.stringify({ eqVal: { eq: 'some' }}))
+        await revocationRulesManager.add(uRule({ username: 'eqNum' }), JSON.stringify({ eqVal: { eq: 10 }}))
+        await revocationRulesManager.add(uRule({ username: 'eqString' }), JSON.stringify({ eqVal: 'some' }))
         
-        await consulUtil.kvPut(uRule({ username: 'match' }), { matchVal: { match : 'some777some' } })
-        await consulUtil.kvPut(uRule({ username: 'startsWith' }), { swVal: { sw: 'some' }})
+        // await revocationRulesManager.add(uRule({ username: 'match' }), JSON.stringify({ matchVal: { match : 'some777some' } }))
 
-        await consulUtil.kvPut(uRule({ username: 'topLevelOr' }), {
+        await revocationRulesManager.add(uRule({ username: 'startsWith' }), JSON.stringify({ swVal: { sw: 'some' }}))
+
+        await revocationRulesManager.add(uRule({ username: 'topLevelOr' }), JSON.stringify({
           _or: true,
           swVal: { sw: 'some' },
           eqVal: 'some'
-        })
+        }))
 
-        await consulUtil.kvPut(uRule({ username: 'operOr' }), {
+        await revocationRulesManager.add(uRule({ username: 'operOr' }), JSON.stringify({
           swVal: {
             sw: 'some',
             _or: true,
             eq: 'foo'
           },
-        })
+        }))
 
         await delay(2000)
 
@@ -324,8 +338,8 @@ describe('HaProxy lua', () => {
         await check('eqString', { eqVal: 'some' }, true)
         await check('eqString', { eqVal: 'somex' }, false)
 
-        await check('match', { matchVal: 'xbarsome777somexbar' }, true)
-        await check('match', { matchVal: 'xbarsomexbar' }, false)
+        // await check('match', { matchVal: 'xbarsome777somexbar' }, true)
+        // await check('match', { matchVal: 'xbarsomexbar' }, false)
 
         await check('startsWith', { swVal: 'someThatStarts' }, true)
         await check('startsWith', { swVal: 'xsomeThatNotStarts' }, false)

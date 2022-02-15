@@ -10,6 +10,11 @@
     "semantic-release": "semantic-release",
     "docker-release": "mdep docker release"
   },
+  "dependencies": {
+    "fastify": "^3.27.1",
+    "fastify-plugin": "^3.0.1",
+    "ms-users": "makeomatic/ms-users#feat/refresh-tokens"
+  },
   "devDependencies": {
     "@babel/core": "^7.16.10",
     "@babel/register": "^7.16.9",
