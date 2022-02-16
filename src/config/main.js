@@ -2,15 +2,12 @@ module.exports = {
   name: "token-server",
   plugins: ["logger", "validator", "consul"],
   logger: {
-    debug: true,
+    debug: false,
     defaultLogger: true,
   },
   consul: {
     base: {
       host: 'consul',
-      // we should probably deny access to setting this config variable from outside of the service,
-      // because it depends on how does the code work
-      promisify: true,
     },
   },
   jwt: {
@@ -18,6 +15,7 @@ module.exports = {
       enabled: true,
       storage: {
         watchOptions: {},
+        storageCacheTTL: 7 * 1000,
       }
     }
   }

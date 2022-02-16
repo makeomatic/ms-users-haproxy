@@ -15,7 +15,7 @@ const config = conf.get('/', { env: process.env.NODE_ENV });
 class Essential extends Microfleet {
   constructor(opts = {}) {
     super(merge({}, config, opts));
-    console.debug(this.config);
+
     const pluginName = 'JwtRevocationRules';
     const { jwt: { stateless: { storage } } } = this.config;
 
@@ -50,13 +50,12 @@ const plugin = fp(async function (instance) {
       await service.close();
     }
   })
+  await service.connect();
 
-  await service.connect();  
+  instance.log.level = service.log.level;
 })
 
 app.register(plugin);
-
-// ignore content type
 app.addContentTypeParser('*', { parseAs: 'string' }, app.getDefaultJsonParser('ignore', 'ignore'));
 
 app.route({
@@ -64,12 +63,11 @@ app.route({
   url: '/',
   handler: async function (request) {
     const token = request.body;
-    
+
     try {
       await verify(this.service, token);
       return 'ok';
     } catch (e) {
-      request.log.error(e);
       return e.code || 'unk';
     }
   },

@@ -5,8 +5,9 @@ require "verify-jwt.print_r"
 local jwks = require "verify-jwt.jwks"
 local config = require "verify-jwt.config"
 local socket = require "socket"
+local newCjson = cjson.new
 
-local json = cjson.new()
+local verifyCache = {}
 
 -- Extracts JWT token information using haproxy internal features
 -- parses header and body using `cjson` library
@@ -39,7 +40,8 @@ local function extractJWTFromHeader(txn)
   local stringBody = txn.c:ub64dec(jwtBody)
   local stringHeader = txn.c:ub64dec(jwtHeader)
   local stringSignature = txn.c:ub64dec(jwtSignature)
-
+  
+  local json = newCjson()
   local decodedBody = json.decode(stringBody)
   local decodedHeader = json.decode(stringHeader)
 
@@ -59,29 +61,18 @@ local function extractJWTFromHeader(txn)
   }
 end
 
--- Validates JWT body and returns error message
-local function validateJWTBody(jwtObj)
-  local jwt = jwtObj.parsedBody
-  local now = core.now().sec * 1000
-
-  if (math.floor(jwt.exp) or now) < now then
-    return false, 'expired'
-  end
-
-  return true
-end
-
 local function setReqParams(txn, valid, reason, token)
   txn.set_var(txn, 'txn.tkn.valid', valid)
   txn.http:req_add_header('x-tkn-valid', valid)
 
   txn.set_var(txn, 'txn.tkn.reason', reason)
   txn.http:req_add_header('x-tkn-reason', reason)
-
+  
+  local json = newCjson()
   for key, value in pairs(token) do
     local encoded = tostring(value)
 
-    if type(value) == 'table' then
+    if type(value) == 'table' then    
       encoded = json.encode(value)
     end
 
@@ -141,13 +132,24 @@ local function verifyJWT(txn)
   end
 
   local tokenBody = jwtObj.parsedBody
-
-  -- local stime = socket.gettime()
   
-  local filterResult, reason = checkRules(jwtObj)
+  local filterResult, reason
+  local cached = verifyCache[jwtObj.signature]
   
-  -- core.Info("Check time: " .. socket.gettime() - stime)
-
+  local now = core.now().sec
+  if cached ~= nil and cached.ttl > now then
+    filterResult, reason = cached.data[0], cached.data[1]
+  else
+    filterResult, reason = checkRules(jwtObj)
+    verifyCache[jwtObj.signature] = {
+      data = {
+        filterResult,
+        reason,
+      },
+      ttl = now + 2,
+    }
+  end
+  
   if filterResult == false then
     setReqParams(txn, 0, reason, tokenBody)
     return
