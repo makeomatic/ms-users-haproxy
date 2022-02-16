@@ -7,4 +7,4 @@ exports.redis = {
   options: {},
 };
 
-exports.plugins = ["logger", "validator", "consul", "redisSentinel"]
+exports.plugins = ['logger', 'validator', 'consul', 'redisSentinel'];

@@ -5,4 +5,4 @@ exports.redis = {
   })),
 };
 
-exports.plugins = ["logger", "validator", "consul", "redisCluster"]
+exports.plugins = ['logger', 'validator', 'consul', 'redisCluster'];

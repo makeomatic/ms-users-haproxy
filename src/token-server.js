@@ -41,7 +41,7 @@ class Essential extends Microfleet {
 
 const app = fastify({ logger: true });
 
-const plugin = fp(async function (instance) {
+const plugin = fp(async function plugin(instance) {
   const service = new Essential();
 
   instance.decorate('service', service);
@@ -49,11 +49,11 @@ const plugin = fp(async function (instance) {
     if (service) {
       await service.close();
     }
-  })
+  });
   await service.connect();
 
   instance.log.level = service.log.level;
-})
+});
 
 app.register(plugin);
 app.addContentTypeParser('*', { parseAs: 'string' }, app.getDefaultJsonParser('ignore', 'ignore'));
@@ -61,7 +61,7 @@ app.addContentTypeParser('*', { parseAs: 'string' }, app.getDefaultJsonParser('i
 app.route({
   method: 'POST',
   url: '/',
-  handler: async function (request) {
+  async handler(request) {
     const token = request.body;
 
     try {

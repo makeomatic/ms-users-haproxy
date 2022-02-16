@@ -4,11 +4,13 @@ const { map } = require('bluebird');
 const ld = require('lodash');
 const Redis = require('ioredis');
 
-const jwt = require('jsonwebtoken')
-
+const jwt = require('jsonwebtoken');
 
 const ruleCount = 100;
 let total = 0;
+let privateKeys;
+
+const signRsa = (payload) => jwt.sign({ ...payload }, privateKeys.rsa, { algorithm: 'RS256' });
 
 function createGlobalCmds(r) {
   const gKey = JSON.stringify({
@@ -91,7 +93,7 @@ async function createUserRules(redis, userIds = []) {
 }
 
 function createTokens(users) {
-  const exp = Date.now() + 30 *24 * 60 * 60 * 1000
+  const exp = Date.now() + 30 * 24 * 60 * 60 * 1000;
   return users.map((user) => signRsa({
     cs: `${user}-0xx`,
     rt: `${user}-0xx`,
@@ -100,32 +102,29 @@ function createTokens(users) {
     username: user,
     iss: 'ms-users',
     extra: true,
-  }))
+  }));
 }
 
 async function createConfig(token) {
   const template = await fs.readFile(`${__dirname}/load.yaml.template`, 'utf-8');
-  const rendered = template.replace(/{token}/, token)
+  const rendered = template.replace(/{token}/, token);
   await fs.writeFile(`${__dirname}/load.yaml`, rendered);
 }
 
 async function createAmmo(tokens) {
-  const rendered = tokens.map((token) => `[Authorization: JWT ${token}]\n/\n`).join('')
-  await fs.writeFile(`${__dirname}/ammo.txt`, rendered)
+  const rendered = tokens.map((token) => `[Authorization: JWT ${token}]\n/\n`).join('');
+  await fs.writeFile(`${__dirname}/ammo.txt`, rendered);
 }
-
-const signRsa = (payload) => jwt.sign({ ...payload }, privateKeys.rsa, { algorithm: 'RS256' })
-const signHmac = (payload) => jwt.sign({ ...payload }, privateKeys.hs, { algorithm: 'HS256' })
 
 async function loadKeys() {
   return {
     rsa: {
       key: await fs.readFile(`${__dirname}/../keys/rsa-private.pem`, 'utf-8'),
-      passphrase: '123123'
+      passphrase: '123123',
     },
     // es: await fs.readFile(`${__dirname}/../keys/alpine-es256-private.pem`, 'utf-8'),
-    hs: 'i-hope-that-you-change-this-long-default-secret-in-your-app'
-  }
+    hs: 'i-hope-that-you-change-this-long-default-secret-in-your-app',
+  };
 }
 
 async function start() {
@@ -135,7 +134,7 @@ async function start() {
     ],
     name: 'mservice',
   });
-  privateKeys = await loadKeys()
+  privateKeys = await loadKeys();
 
   const users = [];
 
@@ -143,8 +142,8 @@ async function start() {
     users.push(`foo-${i}`, `bar-${i}`, `baz-${i}`);
   });
 
-  console.debug('Create tokens')
-  const userTokens = await createTokens(users)
+  console.debug('Create tokens');
+  const userTokens = await createTokens(users);
 
   console.debug('Create rules...');
 
@@ -163,17 +162,19 @@ async function start() {
 
   console.debug('Done Create rules...');
 
-  console.debug('tokens', userTokens.map((t) => `curl --header "Authorization: JWT ${t}" localhost:8080`))
+  console.debug('tokens', userTokens.map((t) => `curl --header "Authorization: JWT ${t}" localhost:8080`));
 
-  await createConfig()
-  await createAmmo(userTokens)
-  
+  await createConfig();
+  await createAmmo(userTokens);
+
   redis.disconnect();
 }
 
 start()
   .then(() => { console.debug('Done'); return 1; })
   .catch((err) => {
-    console.debug('x',
-      require('util').inspect(err, { depth: null, colors: true }));
+    console.debug(
+      'x',
+      require('util').inspect(err, { depth: null, colors: true })
+    );
   });

@@ -1,6 +1,6 @@
 module.exports = {
-  name: "token-server",
-  plugins: ["logger", "validator", "consul"],
+  name: 'token-server',
+  plugins: ['logger', 'validator', 'consul'],
   logger: {
     debug: false,
     defaultLogger: true,
@@ -16,7 +16,7 @@ module.exports = {
       storage: {
         watchOptions: {},
         storageCacheTTL: 7 * 1000,
-      }
-    }
-  }
-}
+      },
+    },
+  },
+};
