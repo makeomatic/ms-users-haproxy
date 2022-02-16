@@ -32,10 +32,9 @@ RUN set -eux; \
   luarocks install lua-cjson 2.1.0-1; \
   luarocks install LuaSocket; \
   luarocks install luaossl; \
-  luarocks install --server=http://luarocks.org/dev lua-consul; \
   \
   apk del --no-network .build-deps;
 
-COPY ./src /usr/local/lib/lua/5.3/
+COPY ./src/lua /usr/local/lib/lua/5.3/
 
 USER haproxy

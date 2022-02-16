@@ -6,6 +6,7 @@ exports = module.exports = {
   services: [],
   with_local_compose: true,
   nycCoverage: false,
+  sleep: 5,
   extras: {
     tester: {
       volumes: ['${PWD}/test/config:/configs:cached'],
