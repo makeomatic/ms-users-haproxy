@@ -28,4 +28,58 @@ services:
     ports:
       - 8080:8080
       - 8081:8081
-    command: "haproxy -f /usr/local/etc/haproxy/haproxy-load.cfg"    
+    command: "haproxy -f /usr/local/etc/haproxy/haproxy-load.cfg"
+    sysctls:
+      net.ipv4.tcp_rmem: 4096 16060 262144
+      net.ipv4.tcp_wmem: 4096 16384 262144
+      net.ipv4.tcp_tw_reuse: 1
+      net.ipv4.ip_local_port_range: 1024 65023
+      net.ipv4.tcp_max_syn_backlog: 60000
+      net.ipv4.tcp_fin_timeout: 30
+      net.ipv4.tcp_synack_retries: 3
+      net.ipv4.ip_nonlocal_bind: 1
+      net.core.somaxconn: 60000
+  
+  redis:
+    image: redis:6-alpine
+    hostname: redis
+    expose:
+      - '6379'
+  redis-sentinel:
+    image: redis:6-alpine
+    hostname: redis-sentinel
+    expose:
+      - '26379'
+    depends_on:
+      - redis
+    volumes:
+      - ${PWD}/node_modules/@makeomatic/deploy/templates/redis-sentinel.sh:/entrypoint.sh:ro
+    command: /bin/sh /entrypoint.sh redis
+
+  tester:
+    image: makeomatic/node:16-tester
+    hostname: tester
+    working_dir: /src
+    volumes:
+      - ${PWD}/test/config:/configs:cached
+      - ${PWD}:/src
+    environment:
+      NODE_ENV: test
+      DB_SRV: redisSentinel
+      CI: ${CI:-}
+      DEBUG: ${DEBUG:-''}
+      NCONF_NAMESPACE: MS_USERS_HAPROXY
+      NCONF_FILE_PATH: '["/configs/core.js","/configs/redis.sentinel.js"]'
+    command: node ./index.js
+    expose:
+      - 4000
+    sysctls:
+      net.ipv4.tcp_rmem: 4096 16060 262144
+      net.ipv4.tcp_wmem: 4096 16384 262144
+      net.ipv4.tcp_tw_reuse: 1
+      net.ipv4.ip_local_port_range: 1024 65023
+      net.ipv4.tcp_max_syn_backlog: 60000
+      net.ipv4.tcp_fin_timeout: 30
+      net.ipv4.tcp_synack_retries: 3
+      net.ipv4.ip_nonlocal_bind: 1
+      net.core.somaxconn: 60000

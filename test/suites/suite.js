@@ -9,6 +9,7 @@ const jwt = require('jsonwebtoken')
 const app = require('../../src/token-server');
 
 const ConsulUtil = require('../util/consul');
+const { clearRedis } = require('../util/redis')
 
 const haServer = "http://haproxy:8080"
 const consulServer = "consul"
@@ -55,7 +56,16 @@ describe('HaProxy lua', () => {
     }
 
     await app.listen(4000, '0.0.0.0');
-    await delay(1000);
+    // wait for haproxy backend keepalive
+    await delay(200);
+  })
+  
+  beforeEach(async () => {
+    await clearRedis(app.service);
+    await app.service.consul.kv.del({
+      key: keyPrefix,
+      recurse: true,
+    })
   })
 
   after(async () => {
@@ -72,7 +82,6 @@ describe('HaProxy lua', () => {
       }
 
       const res = await haGet(signHmac(data))
-      console.debug(res);
       validateResponse(res, {
         reason: 'ok',
         valid: '1',
@@ -226,7 +235,7 @@ describe('HaProxy lua', () => {
   
         // invalidate 2 access token
         await revocationRulesManager.add(uRule(firstRefresh), invAccess(thirdAccess));
-        await delay(2000);
+        await delay(100);
   
         const thirdJwtRes = await haGet(signHmac(thirdAccess));
         const secondJwtRes = await haGet(signHmac(secondAccess));
@@ -238,7 +247,7 @@ describe('HaProxy lua', () => {
   
         // invalidate refresh token
         await revocationRulesManager.add(uRule(firstRefresh), invRtRule(firstRefresh));
-        await delay(2000);
+        await delay(100);
   
         const thirdInvJwtRes = await haGet(signHmac(thirdAccess));
         const secondInvJwtRes = await haGet(signHmac(secondAccess));
@@ -258,7 +267,7 @@ describe('HaProxy lua', () => {
   
         // invalidate all tokens
         await revocationRulesManager.add(gRule(), invAll(newPair.refresh));
-        await delay(2000);
+        await delay(100);
   
         const newJwtBlockedRes = await haGet(signHmac(newPair.access));
 
@@ -302,7 +311,7 @@ describe('HaProxy lua', () => {
           },
         }))
 
-        await delay(2000)
+        await delay(100)
 
         const check = async (rule, data, shoulBeInvalid = true) => {
           const token = signHmac({

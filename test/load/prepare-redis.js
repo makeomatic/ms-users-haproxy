@@ -7,7 +7,7 @@ const Redis = require('ioredis');
 const jwt = require('jsonwebtoken')
 
 
-const ruleCount = 1000;
+const ruleCount = 100;
 let total = 0;
 
 function createGlobalCmds(r) {
@@ -22,7 +22,7 @@ function createGlobalCmds(r) {
     aud: {
       match: 'no-match',
       _or: true,
-      sw: 'x-no-start',
+      eq: 'x-no-start',
     },
   });
 
@@ -43,7 +43,7 @@ function createUserCmds(userId, r) {
     aud: {
       match: 'no-match',
       _or: true,
-      sw: 'x-no-start',
+      eq: 'x-no-start',
     },
   });
 
@@ -67,7 +67,7 @@ async function createGlobalRules(redis) {
     total += chunk.length;
     const pipeline = redis.multi(chunk);
     await pipeline.exec();
-  }, { concurrency: 5 });
+  }, { concurrency: 10 });
 }
 
 async function createUserRules(redis, userIds = []) {
@@ -86,7 +86,7 @@ async function createUserRules(redis, userIds = []) {
       await pipeline.exec();
     }, { concurrency: 5 });
   }, {
-    concurrency: 4,
+    concurrency: 8,
   });
 }
 
@@ -139,7 +139,7 @@ async function start() {
 
   const users = [];
 
-  ld.range(1000).forEach((i) => {
+  ld.range(3000).forEach((i) => {
     users.push(`foo-${i}`, `bar-${i}`, `baz-${i}`);
   });
 
