@@ -58,6 +58,10 @@ const plugin = fp(async function plugin(instance) {
 app.register(plugin);
 app.addContentTypeParser('*', { parseAs: 'string' }, app.getDefaultJsonParser('ignore', 'ignore'));
 
+/**
+ * @api [POST] / Verify token
+ * @apiDescription Verifies provided token using revocation rule filters
+ */
 app.route({
   method: 'POST',
   url: '/',

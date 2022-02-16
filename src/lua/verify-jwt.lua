@@ -5,7 +5,10 @@ require "verify-jwt.print_r"
 local jwks = require "verify-jwt.jwks"
 local config = require "verify-jwt.config"
 local socket = require "socket"
+
 local newCjson = cjson.new
+local JWT_CACHE_TTL = config.jwt.cacheTTL
+local JWT_TOKEN_SERVER_BACKEND = config.jwt.tokenServer
 
 local verifyCache = {}
 
@@ -38,7 +41,6 @@ local function extractJWTFromHeader(txn)
   local jwtSignature = tokenFields[3]
 
   local stringBody = txn.c:ub64dec(jwtBody)
-  local stringHeader = txn.c:ub64dec(jwtHeader)
   local stringSignature = txn.c:ub64dec(jwtSignature)
   
   local json = newCjson()
@@ -48,15 +50,11 @@ local function extractJWTFromHeader(txn)
   local jwtAlgo = decodedHeader['alg']
 
   return {
-    raw = jwtRaw,
     algo = jwtAlgo,
     encodedBody = jwtBody,
     encodedHeader = jwtHeader,
-    encodedSignature = jwtSignature,
     body = stringBody,
-    header = stringHeader,
     parsedBody = decodedBody,
-    parsedHeader = decodedHeader,
     signature = stringSignature,
   }
 end
@@ -81,15 +79,14 @@ local function setReqParams(txn, valid, reason, token)
   end
 end
 
+-- selects first available token server from specified backend
 local function selectJwtBackend()
   for _, backend in pairs(core.backends) do
-    if backend and backend.name:sub(1, 10) == 'jwt-server' then
+    if backend and backend.name:sub(1, #JWT_TOKEN_SERVER_BACKEND) == JWT_TOKEN_SERVER_BACKEND then
       for _, server in pairs(backend.servers) do
         local stats = server:get_stats()
         if stats['status'] == 'UP' then
           return server:get_addr()
-        else
-          core.Debug(backend.name .. " -> " .. server:get_addr() .. "- DOWN")
         end
       end
     end
@@ -98,6 +95,7 @@ local function selectJwtBackend()
   return nil
 end
 
+-- checks passed token using token server backend
 local function checkRules(jwtObj)
   local httpclient = core.httpclient()
   local backend = selectJwtBackend()
@@ -105,7 +103,7 @@ local function checkRules(jwtObj)
   if backend == nil then
     return false, "no-backend"
   end
-
+  
   local url = "http://" .. backend
   local result = httpclient:post({ url = url, body = jwtObj.body})
 
@@ -116,6 +114,7 @@ local function checkRules(jwtObj)
   return result.body == "ok", result.body
 end
 
+-- action entry point
 local function verifyJWT(txn)
   local jwtObj = extractJWTFromHeader(txn)
 
@@ -131,30 +130,31 @@ local function verifyJWT(txn)
     return
   end
 
-  local tokenBody = jwtObj.parsedBody
-  
   local filterResult, reason
+  local now = core.now().sec
   local cached = verifyCache[jwtObj.signature]
   
-  local now = core.now().sec
   if cached ~= nil and cached.ttl > now then
+    -- use cache
     filterResult, reason = cached.data[0], cached.data[1]
   else
     filterResult, reason = checkRules(jwtObj)
+    -- cache result
     verifyCache[jwtObj.signature] = {
       data = {
         filterResult,
         reason,
       },
-      ttl = now + 2,
+      ttl = now + JWT_CACHE_TTL,
     }
   end
   
+  local tokenBody = jwtObj.parsedBody
+
   if filterResult == false then
     setReqParams(txn, 0, reason, tokenBody)
     return
   end
-
 
   setReqParams(txn, 1, 'ok', tokenBody)
 end

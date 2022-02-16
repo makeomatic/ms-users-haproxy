@@ -195,7 +195,11 @@ describe('HaProxy lua', () => {
       return { refresh, access };
     };
 
-    const invRtRule = (rt) => (JSON.stringify({ _or: true, rt: rt.cs, cs: rt.cs }));
+    const invRtRule = (rt) => {
+      return JSON.stringify({
+        _or: true, rt: rt.cs, cs: rt.cs, ttl: rt.exp,
+      });
+    };
     const invAll = (rt) => (JSON.stringify({ iat: { lte: Date.now() }, username: rt.username }));
     const invAccess = (newAccess) => (JSON.stringify({ rt: newAccess.rt, iat: { lt: newAccess.iat } }));
 
