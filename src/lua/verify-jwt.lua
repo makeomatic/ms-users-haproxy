@@ -55,20 +55,21 @@ local function extractJWTFromHeader(txn)
     encodedBody = jwtBody,
     encodedHeader = jwtHeader,
     body = stringBody,
-    parsedBody = decodedBody,
+    decodedBody = decodedBody,
     signature = stringSignature,
   }
 end
 
-local function setReqParams(txn, valid, reason, token)
+local function setReqParams(txn, valid, reason, jwtObj)
   txn.set_var(txn, 'txn.tkn.valid', valid)
-  txn.http:req_add_header('x-tkn-valid', valid)
-
   txn.set_var(txn, 'txn.tkn.reason', reason)
+
+  txn.http:req_add_header('x-tkn-valid', valid)
   txn.http:req_add_header('x-tkn-reason', reason)
-  
+  txn.http:req_add_header('x-tkn-body', jwtObj.body)
+
   local json = newCjson()
-  for key, value in pairs(token) do
+  for key, value in pairs(jwtObj.decodedBody) do
     local encoded = tostring(value)
 
     if type(value) == 'table' then    
@@ -76,7 +77,6 @@ local function setReqParams(txn, valid, reason, token)
     end
 
     txn:set_var("txn.tkn.payload." .. key, encoded)
-    txn.http:req_add_header('x-tkn-payload-'.. key, encoded)
   end
 end
 
@@ -86,6 +86,7 @@ local function selectJwtBackend()
     if backend and backend.name:sub(1, #JWT_TOKEN_SERVER_BACKEND) == JWT_TOKEN_SERVER_BACKEND then
       for _, server in pairs(backend.servers) do
         local stats = server:get_stats()
+
         if stats['status'] == 'UP' then
           return server:get_addr()
         end
@@ -106,7 +107,7 @@ local function checkRules(jwtObj)
   end
   
   local url = "http://" .. backend
-  local result = httpclient:post({ url = url, body = jwtObj.body})
+  local result = httpclient:post({ url = url, body = jwtObj.body })
 
   if result.status == 0 then
     return false, "backend-unavail"
@@ -120,7 +121,7 @@ local function verifyJWT(txn)
   local jwtObj = extractJWTFromHeader(txn)
 
   if jwtObj == nil then
-    setReqParams(txn, 0, 'E_TKN_ABSENT', {})
+    setReqParams(txn, 0, 'E_TKN_INVALID', {})
     return
   end
 
@@ -150,15 +151,13 @@ local function verifyJWT(txn)
     }
   end
   
-  local tokenBody = jwtObj.parsedBody
-
   if filterResult == false then
-    setReqParams(txn, 0, reason, tokenBody)
+    setReqParams(txn, 0, reason, jwtObj)
     return
   end
 
   -- finally all checks passed
-  setReqParams(txn, 1, 'ok', tokenBody)
+  setReqParams(txn, 1, 'ok', jwtObj)
 end
 
 core.register_action('verify-jwt', {'http-req'}, verifyJWT)

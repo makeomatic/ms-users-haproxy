@@ -72,6 +72,15 @@ describe('HaProxy lua', () => {
     await app.close();
   });
 
+  it('validates forged token', async () => {
+    const res = await haGet('xx-yy-zz');
+    validateResponse(res, {
+      reason: 'E_TKN_INVALID',
+      valid: '0',
+      body: undefined,
+    });
+  });
+
   describe('HS', () => {
     it('validates valid token', async () => {
       const data = {
@@ -85,10 +94,7 @@ describe('HaProxy lua', () => {
       validateResponse(res, {
         reason: 'ok',
         valid: '1',
-        'payload-username': '777444777',
-        'payload-audience': '["x","y"]',
-        'payload-iat': `${data.iat}.0`,
-        'payload-exp': `${data.exp}.0`,
+        body: JSON.stringify(data),
       });
     });
 
@@ -105,10 +111,7 @@ describe('HaProxy lua', () => {
       validateResponse(res, {
         valid: '0',
         reason: 'E_TKN_EXPIRE',
-        'payload-username': '777444777',
-        'payload-audience': '["x","y"]',
-        'payload-iat': `${data.iat}.0`,
-        'payload-exp': `${data.exp}.0`,
+        body: JSON.stringify(data),
       });
     });
   });
@@ -128,10 +131,7 @@ describe('HaProxy lua', () => {
       validateResponse(res, {
         valid: '1',
         reason: 'ok',
-        'payload-iat': `${data.iat}.0`,
-        'payload-exp': `${data.exp}.0`,
-        'payload-audience': '["x","y"]',
-        'payload-username': '777444777',
+        body: JSON.stringify(data),
       });
     });
 
@@ -148,10 +148,7 @@ describe('HaProxy lua', () => {
       validateResponse(res, {
         valid: '0',
         reason: 'E_TKN_EXPIRE',
-        'payload-iat': `${data.iat}.0`,
-        'payload-exp': `${data.exp}.0`,
-        'payload-audience': '["x","y"]',
-        'payload-username': '777444777',
+        body: JSON.stringify(data),
       });
     });
   });
@@ -216,15 +213,11 @@ describe('HaProxy lua', () => {
       const blacklistedResponse = {
         valid: '0',
         reason: 'E_TKN_INVALID',
-        'payload-iss': 'ms-users',
-        'payload-username': user,
       };
 
       const okResponse = {
         valid: '1',
         reason: 'ok',
-        'payload-iss': 'ms-users',
-        'payload-username': user,
       };
 
       it('should validate tokens', async () => {
@@ -303,8 +296,6 @@ describe('HaProxy lua', () => {
         await revocationRulesManager.add(uRule({ username: 'eqNum' }), JSON.stringify({ eqVal: { eq: 10 } }));
         await revocationRulesManager.add(uRule({ username: 'eqString' }), JSON.stringify({ eqVal: 'some' }));
 
-        // await revocationRulesManager.add(uRule({ username: 'match' }), JSON.stringify({ matchVal: { match : 'some777some' } }))
-
         await revocationRulesManager.add(uRule({ username: 'startsWith' }), JSON.stringify({ swVal: { sw: 'some' } }));
 
         await revocationRulesManager.add(uRule({ username: 'topLevelOr' }), JSON.stringify({
@@ -356,9 +347,6 @@ describe('HaProxy lua', () => {
 
         await check('eqString', { eqVal: 'some' }, true);
         await check('eqString', { eqVal: 'somex' }, false);
-
-        // await check('match', { matchVal: 'xbarsome777somexbar' }, true)
-        // await check('match', { matchVal: 'xbarsomexbar' }, false)
 
         await check('startsWith', { swVal: 'someThatStarts' }, true);
         await check('startsWith', { swVal: 'xsomeThatNotStarts' }, false);

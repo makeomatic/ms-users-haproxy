@@ -124,8 +124,7 @@ Script appends additional request headers after token validation process:
 
 * `x-tkn-valid` - `enum[0, 1]` - signature validation result. `1` == success
 * `x-tkn-reason` - `enum[E_TKN_*]` - validation result - see https://github.com/makeomatic/ms-users/src/constants.js errors
-* `x-tkn-payload-*` - `token.body` contents
-  **NOTE:** Due to LUA implementations all numbers passed as `floats`.
+* `x-tkn-body` - JSON encoded token body
 
 And additional variables added to the HaProxy `TXN` scope:
 
