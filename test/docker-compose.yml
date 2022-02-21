@@ -9,6 +9,7 @@ services:
       context: ${PWD}
     depends_on: 
       - consul
+      - tester
     volumes:
       - ${PWD}/test/config:/usr/local/etc/haproxy
       - ${PWD}/test/keys:/usr/local/etc/haproxy-keys

@@ -6,7 +6,7 @@ const Redis = require('ioredis');
 
 const jwt = require('jsonwebtoken');
 
-const ruleCount = 100;
+const ruleCount = 500;
 let total = 0;
 let privateKeys;
 
@@ -138,7 +138,7 @@ async function start() {
 
   const users = [];
 
-  ld.range(3000).forEach((i) => {
+  ld.range(3333).forEach((i) => {
     users.push(`foo-${i}`, `bar-${i}`, `baz-${i}`);
   });
 

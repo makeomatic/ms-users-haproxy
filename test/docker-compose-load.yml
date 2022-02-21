@@ -25,6 +25,7 @@ services:
       - ${PWD}/test/server/tracer.lua:/usr/local/etc/haproxy-tracer.lua
       - ${PWD}/src/lua/verify-jwt.lua:/usr/local/lib/lua/5.3/verify-jwt.lua
       - ${PWD}/src/lua/verify-jwt:/usr/local/lib/lua/5.3/verify-jwt
+      - ${PWD}/cores:/data
     ports:
       - 8080:8080
       - 8081:8081
@@ -39,6 +40,11 @@ services:
       net.ipv4.tcp_synack_retries: 3
       net.ipv4.ip_nonlocal_bind: 1
       net.core.somaxconn: 60000
+    ulimits:
+      core: -1
+    privileged: true
+    # user: root
+
   
   redis:
     image: redis:6-alpine
@@ -70,6 +76,7 @@ services:
       DEBUG: ${DEBUG:-''}
       NCONF_NAMESPACE: MS_USERS_HAPROXY
       NCONF_FILE_PATH: '["/configs/core.js","/configs/redis.sentinel.js"]'
+      MS_USERS_HAPROXY__LOGGER__OPTIONS__LEVEL: warn
     command: node ./index.js
     expose:
       - 4000
