@@ -9,7 +9,8 @@
     "test": "mdep test run",
     "lint": "eslint ./src ./test",
     "semantic-release": "semantic-release",
-    "docker-release": "mdep docker release"
+    "docker-release-haproxy": "mdep docker release -p ms-users-haproxy -f Dockerfile.haproxy",
+    "docker-release-token-server": "mdep docker release -p ms-users-token-server -f Dockerfile.token-server"
   },
   "dependencies": {
     "@microfleet/core": "^17.11.6",
