@@ -41,8 +41,9 @@ local function extractJWTFromHeader(txn)
   local jwtSignature = tokenFields[3]
 
   local stringBody = txn.c:ub64dec(jwtBody)
+  local stringHeader = txn.c:ub64dec(jwtHeader)
   local stringSignature = txn.c:ub64dec(jwtSignature)
-  
+
   local json = newCjson()
   local decodedBody = json.decode(stringBody)
   local decodedHeader = json.decode(stringHeader)
@@ -119,14 +120,14 @@ local function verifyJWT(txn)
   local jwtObj = extractJWTFromHeader(txn)
 
   if jwtObj == nil then
-    setReqParams(txn, 0, 'absent', {})
+    setReqParams(txn, 0, 'E_TKN_ABSENT', {})
     return
   end
 
   local res = jwks.validateJWTSignature(jwtObj)
 
   if res ~= true then
-    setReqParams(txn, 0, 'forged', {})
+    setReqParams(txn, 0, 'E_TKN_INVALID', {})
     return
   end
 
@@ -156,6 +157,7 @@ local function verifyJWT(txn)
     return
   end
 
+  -- finally all checks passed
   setReqParams(txn, 1, 'ok', tokenBody)
 end
 

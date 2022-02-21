@@ -57,7 +57,7 @@ describe('HaProxy lua', () => {
 
     await app.listen(4000, '0.0.0.0');
     // wait for haproxy backend keepalive
-    await delay(200);
+    await delay(1000);
   });
 
   beforeEach(async () => {
