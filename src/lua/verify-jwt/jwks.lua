@@ -135,12 +135,11 @@ end
 
 -- keys update runner
 function M.loader()
-  core.Info("===== Load task")
-	-- while true do
-  --   core.Info("Load keys, sleep " .. config.jwt.syncInterval)
-	-- 	core.sleep(config.jwt.syncInterval)
-	-- 	M.loadKeys()
-	-- end
+	while true do
+    core.Info("Load keys, sleep " .. config.jwt.syncInterval)
+		core.sleep(config.jwt.syncInterval)
+		M.loadKeys()
+	end
 end
 
 return M

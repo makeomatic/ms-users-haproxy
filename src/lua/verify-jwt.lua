@@ -66,17 +66,29 @@ local function setReqParams(txn, valid, reason, jwtObj)
 
   txn.http:req_add_header('x-tkn-valid', valid)
   txn.http:req_add_header('x-tkn-reason', reason)
-  txn.http:req_add_header('x-tkn-body', jwtObj.body)
 
-  local json = newCjson()
-  for key, value in pairs(jwtObj.decodedBody) do
-    local encoded = tostring(value)
+  if jwtObj ~= nil then
+    txn.http:req_add_header('x-tkn-body', jwtObj.body)
+    -- set additional information about token
+    if jwtObj.decodedBody.st ~= nil then
+      txn.http:req_add_header('x-tkn-stateless', 1)
+      txn.set_var(txn, 'txn.tkn.stateless', 1)
+    else
+      txn.http:req_add_header('x-tkn-legacy', 1)
+      txn.set_var(txn, 'txn.tkn.legacy', 1)
+    end
+    
+    local json = newCjson()
+    for key, value in pairs(jwtObj.decodedBody) do
+      local encoded = tostring(value)
 
-    if type(value) == 'table' then    
-      encoded = json.encode(value)
+      if type(value) == 'table' then    
+        encoded = json.encode(value)
+      end
+
+      txn:set_var("txn.tkn.payload." .. key, encoded)
     end
 
-    txn:set_var("txn.tkn.payload." .. key, encoded)
   end
 end
 
@@ -110,7 +122,7 @@ local function checkRules(jwtObj)
   local result = httpclient:post({ url = url, body = jwtObj.body })
 
   if result.status == 0 then
-    return false, "backend-unavail"
+    return false, "E_BACKEND_UNAVAIL"
   end
   
   return result.body == "ok", result.body
@@ -121,14 +133,19 @@ local function verifyJWT(txn)
   local jwtObj = extractJWTFromHeader(txn)
 
   if jwtObj == nil then
-    setReqParams(txn, 0, 'E_TKN_INVALID', {})
+    setReqParams(txn, 0, 'E_TKN_INVALID') 
     return
   end
 
   local res = jwks.validateJWTSignature(jwtObj)
 
   if res ~= true then
-    setReqParams(txn, 0, 'E_TKN_INVALID', {})
+    setReqParams(txn, 0, 'E_TKN_INVALID')
+    return
+  end
+
+  if jwtObj.decodedBody.st == nil then
+    setReqParams(txn, 0, 'E_TKN_LEGACY', jwtObj)
     return
   end
 

@@ -72,7 +72,7 @@ app.route({
       await verify(this.service, token);
       return 'ok';
     } catch (e) {
-      return e.code || 'unk';
+      return e.code || e.message;
     }
   },
 });

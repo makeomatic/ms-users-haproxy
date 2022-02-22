@@ -88,6 +88,7 @@ describe('HaProxy lua', () => {
         iat: Date.now(),
         exp: Date.now() + 30000,
         audience: ['x', 'y'],
+        st: 1,
       };
 
       const res = await haGet(signHmac(data));
@@ -104,6 +105,7 @@ describe('HaProxy lua', () => {
         iat: Date.now(),
         exp: Date.now() - 1000,
         audience: ['x', 'y'],
+        st: 1,
       };
 
       const res = await haGet(signHmac(data));
@@ -123,6 +125,7 @@ describe('HaProxy lua', () => {
         iat: Date.now(),
         exp: Date.now() + 30 * 24 * 60 * 60 * 1000,
         audience: ['x', 'y'],
+        st: 1,
       };
 
       const token = signRsa(data);
@@ -141,6 +144,7 @@ describe('HaProxy lua', () => {
         iat: Date.now(),
         exp: Date.now() - 1000,
         audience: ['x', 'y'],
+        st: 1,
       };
 
       const res = await haGet(signRsa(data));
@@ -161,6 +165,7 @@ describe('HaProxy lua', () => {
       audience: '*.api',
       iat: Date.now(),
       exp: Date.now() + 30 * 24 * 60 * 60 * 1000,
+      st: 1,
     };
 
     const createAccessToken = (rt, extra) => {
