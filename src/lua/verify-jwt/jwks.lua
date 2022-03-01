@@ -1,5 +1,4 @@
 local cjson = require "cjson.safe"
-local base64 = require "base64"
 local openssl = {
   pkey = require 'openssl.pkey',
   digest = require 'openssl.digest',
@@ -7,6 +6,7 @@ local openssl = {
   hmac = require 'openssl.hmac'
 }
 
+local base64 = require "verify-jwt.base64"
 local http = require "verify-jwt.http-util"
 local config = require"verify-jwt.config"
 

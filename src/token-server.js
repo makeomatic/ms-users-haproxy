@@ -1,18 +1,14 @@
-const fastify = require('fastify');
-const fp = require('fastify-plugin');
-
 const { Microfleet, ConnectorsTypes } = require('@microfleet/core');
 const { merge } = require('lodash');
-const { ConsulWatcher } = require('ms-users/src/utils/consul-watcher');
-const { RevocationRulesManager } = require('ms-users/src/utils/revocation-rules-manager');
-const { RevocationRulesStorage } = require('ms-users/src/utils/revocation-rules-storage');
-const { verify } = require('ms-users/src/utils/jwt-stateless');
 
+const { ConsulWatcher, auth: { statelessJWT: { jwt, rule } } } = require('ms-users/src/utils');
 const conf = require('./config');
 
 const config = conf.get('/', { env: process.env.NODE_ENV });
 
-class Essential extends Microfleet {
+const { RevocationRulesManager, RevocationRulesStorage } = rule;
+
+class TokenServer extends Microfleet {
   constructor(opts = {}) {
     super(merge({}, config, opts));
 
@@ -39,42 +35,26 @@ class Essential extends Microfleet {
   }
 }
 
-const app = fastify({ logger: true });
-
-const plugin = fp(async function plugin(instance) {
-  const service = new Essential();
-
-  instance.decorate('service', service);
-  instance.addHook('onClose', async () => {
-    if (service) {
-      await service.close();
-    }
-  });
-  await service.connect();
-
-  instance.log.level = service.log.level;
-});
-
-app.register(plugin);
-app.addContentTypeParser('*', { parseAs: 'string' }, app.getDefaultJsonParser('ignore', 'ignore'));
-
 /**
  * @api [POST] / Verify token
  * @apiDescription Verifies provided token using revocation rule filters
  */
-app.route({
+const verifyRoute = {
   method: 'POST',
   url: '/',
   async handler(request) {
     const token = request.body;
 
     try {
-      await verify(this.service, token);
+      await jwt.verify(this.service, token);
       return 'ok';
     } catch (e) {
       return e.code || e.message;
     }
   },
-});
+};
 
-module.exports = app;
+module.exports = {
+  TokenServer,
+  verifyRoute,
+};

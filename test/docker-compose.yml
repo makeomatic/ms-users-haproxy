@@ -7,6 +7,7 @@ services:
   haproxy:
     build:
       context: ${PWD}
+      dockerfile: ${PWD}/Dockerfile.haproxy
     depends_on: 
       - consul
       - tester

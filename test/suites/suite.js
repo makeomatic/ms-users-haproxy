@@ -6,7 +6,7 @@ const axios = require('axios').default;
 const ld = require('lodash');
 
 const jwt = require('jsonwebtoken');
-const app = require('../../src/token-server');
+const app = require('../../src/fastify-app');
 
 const ConsulUtil = require('../util/consul');
 const { clearRedis } = require('../util/redis');

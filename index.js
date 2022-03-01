@@ -1,4 +1,4 @@
-const app = require('./src/token-server');
+const app = require('./src/fastify-app');
 
 const start = async () => {
   try {
