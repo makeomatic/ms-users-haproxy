@@ -7,6 +7,7 @@ exports = module.exports = {
   with_local_compose: true,
   nycCoverage: false,
   sleep: 5,
+  rebuild: ['ms-flakeless'],
   extras: {
     tester: {
       volumes: ['${PWD}/test/config:/configs:cached'],
@@ -16,7 +17,7 @@ exports = module.exports = {
         DB_SRV: dbSrv,
         CI: "${CI:-}",
         DEBUG: "${DEBUG:-''}",
-        NCONF_NAMESPACE: 'MS_USERS_HAPROXY',
+        NCONF_NAMESPACE: 'MS_USERS_TOKEN_SERVER',
       },
     },
   }

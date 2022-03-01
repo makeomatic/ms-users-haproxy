@@ -14,10 +14,17 @@
   },
   "dependencies": {
     "@microfleet/core": "^17.11.6",
+    "@microfleet/plugin-consul": "^2.7.10",
+    "@microfleet/plugin-logger": "^0.10.10",
+    "@microfleet/plugin-redis-cluster": "^0.5.10",
+    "@microfleet/plugin-redis-core": "^0.5.10",
+    "@microfleet/plugin-redis-sentinel": "^0.5.10",
+    "@microfleet/plugin-validator": "^0.5.10",
+    "@microfleet/validation": "^11.1.2",
     "fastify": "^3.27.1",
     "fastify-plugin": "^3.0.1",
     "ms-conf": "^7.0.2",
-    "ms-users": "makeomatic/ms-users#feat/refresh-tokens"
+    "ms-users": "github:makeomatic/ms-users#feat/refresh-tokens"
   },
   "devDependencies": {
     "@babel/core": "^7.17.4",
