@@ -112,7 +112,7 @@ describe('HaProxy lua', () => {
 
       validateResponse(res, {
         valid: '0',
-        reason: 'E_TKN_EXPIRE',
+        reason: 'E_TKN_INVALID',
         body: JSON.stringify(data),
       });
     });
@@ -151,7 +151,7 @@ describe('HaProxy lua', () => {
 
       validateResponse(res, {
         valid: '0',
-        reason: 'E_TKN_EXPIRE',
+        reason: 'E_TKN_INVALID',
         body: JSON.stringify(data),
       });
     });

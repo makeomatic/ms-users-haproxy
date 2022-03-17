@@ -49,6 +49,9 @@ const verifyRoute = {
       await jwt.verify(this.service, token);
       return 'ok';
     } catch (e) {
+      if (![403, 401].includes(e.status)) {
+        this.log.error({ error: e }, 'token verify error');
+      }
       return e.code || e.message;
     }
   },
