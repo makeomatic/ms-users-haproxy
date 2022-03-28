@@ -115,7 +115,7 @@ local function checkRules(jwtObj)
   local backend = selectJwtBackend()
 
   if backend == nil then
-    return false, "no-backend"
+    return false, "E_BACKEND_UNAVAIL"
   end
   
   local url = "http://" .. backend
@@ -153,7 +153,7 @@ local function verifyJWT(txn)
   local now = core.now().sec
   local cached = verifyCache[jwtObj.signature]
   
-  if cached ~= nil and cached.ttl > now then
+  if cached ~= nil and cached.exp > now then
     -- use cache
     filterResult, reason = cached.data[0], cached.data[1]
   else
@@ -164,7 +164,7 @@ local function verifyJWT(txn)
         filterResult,
         reason,
       },
-      ttl = now + JWT_CACHE_TTL,
+      exp = now + JWT_CACHE_TTL,
     }
   end
   
