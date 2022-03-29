@@ -1,7 +1,7 @@
 const { Microfleet, ConnectorsTypes } = require('@microfleet/core');
 const { merge } = require('lodash');
 
-const { ConsulWatcher, auth: { statelessJWT: { jwt, rule } } } = require('ms-users/src/utils');
+const { ConsulWatcher, auth: { statelessJWT: { jwt, rule } } } = require('ms-users/lib/utils');
 const conf = require('./config');
 
 const config = conf.get('/', { env: process.env.NODE_ENV });
