@@ -4,3 +4,4 @@ test/load/*.log
 test/load/ammo.txt
 test/consul-template/revocation-rules.conf
 test/load/load.yaml
+lib

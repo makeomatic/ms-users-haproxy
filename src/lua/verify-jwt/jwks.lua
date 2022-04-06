@@ -8,7 +8,7 @@ local openssl = {
 
 local base64 = require "verify-jwt.base64"
 local http = require "verify-jwt.http-util"
-local config = require"verify-jwt.config"
+local config = require "verify-jwt.config"
 
 local json = cjson.new()
 

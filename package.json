@@ -8,6 +8,7 @@
   "scripts": {
     "test": "mdep test run",
     "lint": "eslint ./src ./test",
+    "compile": "rimraf ./lib; cp -r ./src ./lib",
     "semantic-release": "semantic-release",
     "docker-release": "pnpm docker-release-haproxy; pnpm docker-release-haproxy-ingress; pnpm docker-release-token-server",
     "docker-build": "pnpm docker-build-haproxy; pnpm docker-build-haproxy-ingress; pnpm docker-build-token-server",
@@ -51,7 +52,8 @@
     "eslint-plugin-promise": "^6.0.0",
     "eslint-plugin-unicorn": "^42.0.0",
     "jsonwebtoken": "^8.5.1",
-    "mocha": "^9.2.2"
+    "mocha": "^9.2.2",
+    "rimraf": "^3.0.2"
   },
   "peerDependencies": {
     "common-errors": ">=1.2.0 <2.0.0"
