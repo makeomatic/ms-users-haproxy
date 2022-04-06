@@ -4,21 +4,28 @@ Provides JWT token verification script for HAProxy and Service that performs tok
 
 ## Contents
 
-<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=2 orderedList=false} -->
+<!-- @import "[TOC]" {cmd="toc" depthFrom=1 depthTo=6 orderedList=false} -->
 
 <!-- code_chunk_output -->
 
 - [HAPROXY JWT verification helper](#haproxy-jwt-verification-helper)
   - [Contents](#contents)
-  - [Supported algoritms](#supported-algoritms)
+  - [Supported algorithms](#supported-algorithms)
   - [Verification process](#verification-process)
   - [Token Server](#token-server)
+    - [Installation](#installation)
   - [HaProxy `verify-jwt` script](#haproxy-verify-jwt-script)
+    - [Installation](#installation-1)
+      - [Manual](#manual)
+      - [DOCKER image](#docker-image)
+      - [Configuration](#configuration)
+        - [Sample `haproxy.cfg`:](#sample-haproxycfg)
+        - [JWT Signing Keys](#jwt-signing-keys)
   - [Request Headers and TXN vars](#request-headers-and-txn-vars)
 
 <!-- /code_chunk_output -->
 
-## Supported algoritms
+## Supported algorithms
 
 * HMAC{any} - secret based signature verification
 * RS/HS/ES{any} - public key verification
@@ -27,7 +34,7 @@ Provides JWT token verification script for HAProxy and Service that performs tok
 
 1. Verify the signature of the provided JWT token using the provided list of keys. Supports only `Authorization: JWT {token}` headers
 
-2. Verify the token payload and expireation using the `token-server` sidecar.
+2. Verify the token payload and expiration using the `token-server` sidecar.
 
 ## Token Server
 
@@ -125,9 +132,12 @@ Script appends additional request headers after token validation process:
 * `x-tkn-valid` - `enum[0, 1]` - signature validation result. `1` == success
 * `x-tkn-reason` - `enum[E_TKN_*]` - validation result - see https://github.com/makeomatic/ms-users/src/constants.js errors
 * `x-tkn-body` - JSON encoded token body
+* `x-tkn-stateless|x-tkn-legacy` - token version 
 
 And additional variables added to the HaProxy `TXN` scope:
 
 * `txn.tkn.valid`
 * `txn.tkn.reason`
 * `txn.tkn.payload.*`
+* `txn.tkn.stateless`
+* `txn.tkn.legacy`
