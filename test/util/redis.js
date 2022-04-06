@@ -6,9 +6,9 @@ exports = module.exports = {};
  */
 exports.clearRedis = async (service) => {
   if (service.redisType === 'redisCluster') {
-    await Promise.map(service.redis.nodes('master'), (node) => (
-      node.flushdb()
-    ));
+    await Promise.all(
+      service.redis.nodes('master').map((node) => node.flushdb())
+    );
   } else {
     await service.redis.flushdb();
   }
