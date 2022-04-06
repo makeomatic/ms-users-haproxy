@@ -26,7 +26,7 @@ exports = module.exports = {
   },
   dba: {
     HAPROXY_IMAGE_NAME: `${repo}/haproxy`,
-    HAPROXY_IMAGE_VERSION: `${node}-${process.env.npm_package_version}`
+    HAPROXY_IMAGE_VERSION: `${process.env.npm_package_version}`
   },
 };
 

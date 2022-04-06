@@ -5,6 +5,7 @@
   "directories": {
     "test": "test"
   },
+  "private": true,
   "scripts": {
     "test": "npm run lint && npm run test:e2e",
     "test:e2e:cluster": "DB_SRV=redisCluster mdep test run",
@@ -15,12 +16,12 @@
     "semantic-release": "semantic-release",
     "docker-release": "npm run docker-release-haproxy; npm run docker-release-haproxy-ingress; npm run docker-release-token-server",
     "docker-build": "npm run docker-build-haproxy; npm run docker-build-haproxy-ingress; npm run docker-build-token-server",
-    "docker-release-haproxy": "mdep docker release -p haproxy -f Dockerfile-haproxy",
-    "docker-build-haproxy": "mdep docker build -p haproxy -f Dockerfile-haproxy",
-    "docker-release-token-server": "mdep docker build -p haproxy-token-server -f Dockerfile-token-server",
-    "docker-build-token-server": "mdep docker build -p haproxy-token-server -f Dockerfile-token-server",
-    "docker-release-haproxy-ingress": "mdep docker release -p haproxy-ingress -f Dockerfile-k8s-ingress",
-    "docker-build-haproxy-ingress": "mdep docker build -p haproxy-ingress -f Dockerfile-k8s-ingress",
+    "docker-release-haproxy": "mdep docker release -p haproxy --tl --include_node false -f Dockerfile-haproxy",
+    "docker-build-haproxy": "mdep docker build -p haproxy --tl --include_node false -f Dockerfile-haproxy",
+    "docker-release-token-server": "mdep docker build -p haproxy-token-server --tl --include_node false -f Dockerfile-token-server",
+    "docker-build-token-server": "mdep docker build -p haproxy-token-server --tl --include_node false -f Dockerfile-token-server",
+    "docker-release-haproxy-ingress": "mdep docker release -p haproxy-ingress --tl --include_node false -f Dockerfile-k8s-ingress",
+    "docker-build-haproxy-ingress": "mdep docker build -p haproxy-ingress --tl --include_node false -f Dockerfile-k8s-ingress",
     "start": "node index.js"
   },
   "dependencies": {
