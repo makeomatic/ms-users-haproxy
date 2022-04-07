@@ -18,7 +18,7 @@
     "docker-build": "npm run docker-build-haproxy && npm run docker-build-haproxy-ingress && npm run docker-build-token-server",
     "docker-release-haproxy": "mdep docker release -p haproxy --tl --include_node false -f Dockerfile-haproxy",
     "docker-build-haproxy": "mdep docker build -p haproxy --tl --include_node false -f Dockerfile-haproxy",
-    "docker-release-token-server": "mdep docker build -p haproxy-token-server --tl --include_node false -f Dockerfile-token-server",
+    "docker-release-token-server": "mdep docker release -p haproxy-token-server --tl --include_node false -f Dockerfile-token-server",
     "docker-build-token-server": "mdep docker build -p haproxy-token-server --tl --include_node false -f Dockerfile-token-server",
     "docker-release-haproxy-ingress": "mdep docker release -p haproxy-ingress --tl --include_node false -f Dockerfile-k8s-ingress",
     "docker-build-haproxy-ingress": "mdep docker build -p haproxy-ingress --tl --include_node false -f Dockerfile-k8s-ingress",
