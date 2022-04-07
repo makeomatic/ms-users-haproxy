@@ -1,6 +1,7 @@
 const dbSrv = process.env.DB_SRV || "redisSentinel";
 const repo = process.env.DOCKER_REPO || 'makeomatic';
 const node = '16';
+const version = process.env.IMAGE_VERSION || process.env.npm_package_version;
 
 exports = module.exports = {
   node,
@@ -24,9 +25,10 @@ exports = module.exports = {
       },
     },
   },
+  version,
   dba: {
     HAPROXY_IMAGE_NAME: `${repo}/haproxy`,
-    HAPROXY_IMAGE_VERSION: `${process.env.npm_package_version}`
+    HAPROXY_IMAGE_VERSION: version
   },
 };
 
