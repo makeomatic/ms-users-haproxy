@@ -1,0 +1,6 @@
+{
+  "extends": "makeomatic",
+  "parserOptions": {
+    "ecmaVersion": 2021
+  }
+}

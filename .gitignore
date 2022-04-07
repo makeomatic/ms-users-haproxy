@@ -1,2 +1,7 @@
 node_modules
-
+test/load/logs
+test/load/*.log
+test/load/ammo.txt
+test/consul-template/revocation-rules.conf
+test/load/load.yaml
+lib

@@ -1,0 +1,22 @@
+services:
+  consul:
+    image: consul:1.6
+    hostname: consul
+    ports:
+      - 8500:8500
+  haproxy:
+    build:
+      context: ${PWD}
+      dockerfile: ${PWD}/Dockerfile-haproxy
+    depends_on: 
+      - consul
+      - tester
+    volumes:
+      - ${PWD}/test/config:/usr/local/etc/haproxy
+      - ${PWD}/test/keys:/usr/local/etc/haproxy-keys
+      - ${PWD}/test/server/tracer.lua:/usr/local/etc/haproxy-tracer.lua
+      - ${PWD}/src/lua/verify-jwt.lua:/usr/local/lib/lua/5.3/verify-jwt.lua
+      - ${PWD}/src/lua/verify-jwt:/usr/local/lib/lua/5.3/verify-jwt
+    ports:
+      - 8080:8080
+      - 8081:8081

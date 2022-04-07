@@ -5,20 +5,65 @@
   "directories": {
     "test": "test"
   },
+  "private": true,
   "scripts": {
-    "test": "yarn mdep test run",
-    "semantic-release": "semantic-release"
+    "test": "npm run lint && npm run test:e2e",
+    "test:e2e:cluster": "DB_SRV=redisCluster mdep test run",
+    "test:e2e:sentinel": "DB_SRV=redisSentinel mdep test run",
+    "test:e2e": "npm run test:e2e:cluster && npm run test:e2e:sentinel",
+    "lint": "eslint ./src ./test",
+    "compile": "rimraf ./lib; cp -r ./src ./lib",
+    "semantic-release": "semantic-release",
+    "docker-release": "npm run docker-release-haproxy && npm run docker-release-haproxy-ingress && npm run docker-release-token-server",
+    "docker-build": "npm run docker-build-haproxy && npm run docker-build-haproxy-ingress && npm run docker-build-token-server",
+    "docker-release-haproxy": "mdep docker release -p haproxy --tl --include_node false -f Dockerfile-haproxy",
+    "docker-build-haproxy": "mdep docker build -p haproxy --tl --include_node false -f Dockerfile-haproxy",
+    "docker-release-token-server": "mdep docker release -p haproxy-token-server --tl --include_node false -f Dockerfile-token-server",
+    "docker-build-token-server": "mdep docker build -p haproxy-token-server --tl --include_node false -f Dockerfile-token-server",
+    "docker-release-haproxy-ingress": "mdep docker release -p haproxy-ingress --tl --include_node false -f Dockerfile-k8s-ingress",
+    "docker-build-haproxy-ingress": "mdep docker build -p haproxy-ingress --tl --include_node false -f Dockerfile-k8s-ingress",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@microfleet/core": "^17.21.0",
+    "@microfleet/plugin-consul": "^2.17.0",
+    "@microfleet/plugin-logger": "^0.20.0",
+    "@microfleet/plugin-redis-cluster": "^0.15.0",
+    "@microfleet/plugin-redis-core": "^0.15.0",
+    "@microfleet/plugin-redis-sentinel": "^0.15.0",
+    "@microfleet/plugin-validator": "^0.15.0",
+    "@microfleet/validation": "^11.1.2",
+    "codecov": "^3.8.3",
+    "consul": "^0.40.0",
+    "fastify": "^3.28.0",
+    "fastify-plugin": "^3.0.1",
+    "ioredis": "^5.0.3",
+    "lodash": "^4.17.21",
+    "ms-conf": "^7.0.2",
+    "ms-users": "^15.2.0"
   },
   "devDependencies": {
-    "@babel/core": "^7.16.10",
-    "@babel/register": "^7.16.9",
-    "@makeomatic/deploy": "^11.0.5",
-    "axios": "^0.25.0",
+    "@babel/core": "^7.17.8",
+    "@babel/register": "^7.17.7",
+    "@makeomatic/deploy": "^12.6.3",
+    "@semantic-release/changelog": "^6.0.1",
+    "@semantic-release/exec": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "axios": "^0.26.1",
     "bluebird": "^3.7.2",
-    "consul": "^0.40.0",
+    "commitlint": "^16.2.3",
     "cross-env": "^7.0.3",
+    "eslint": "^8.12.0",
+    "eslint-config-makeomatic": "^5.1.0",
+    "eslint-plugin-import": "^2.26.0",
+    "eslint-plugin-promise": "^6.0.0",
+    "eslint-plugin-unicorn": "^42.0.0",
     "jsonwebtoken": "^8.5.1",
-    "lodash": "^4.17.21",
-    "mocha": "^9.1.4"
+    "mocha": "^9.2.2",
+    "rimraf": "^3.0.2",
+    "semantic-release": "^19.0.2"
+  },
+  "peerDependencies": {
+    "common-errors": ">=1.2.0 <2.0.0"
   }
 }

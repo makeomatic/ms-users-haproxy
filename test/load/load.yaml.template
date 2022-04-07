@@ -1,0 +1,12 @@
+phantom:
+  address: haproxy:8080
+  load_profile:
+    load_type: rps
+    schedule: line(100, 1100, 3m)
+  header_http: "1.1"
+  ammo_type: uri
+  ammofile: ammo.txt
+console:
+  enabled: true
+telegraf:
+  enabled: false

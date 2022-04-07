@@ -3,6 +3,12 @@
     "master",
     { "name": "develop", "prerelease": true }
   ],
+  "prepare": [
+    "@semantic-release/changelog",
+    { "path": "@semantic-release/npm", "npmPublish": false },
+    { "path": "@semantic-release/exec", "cmd": "yarn docker-release" },
+    "@semantic-release/git"
+  ],
   "analyzeCommits": {
     "preset": "angular",
     "releaseRules": [
