@@ -12,6 +12,8 @@
     "test:e2e:sentinel": "DB_SRV=redisSentinel mdep test run",
     "test:e2e": "npm run test:e2e:cluster && npm run test:e2e:sentinel",
     "lint": "eslint ./src ./test",
+    "prepublishOnly": "pnpm run compile",
+    "release": "pnpm i && pnpm run semantic-release",
     "compile": "rimraf ./lib; cp -r ./src ./lib",
     "semantic-release": "semantic-release",
     "docker-release": "npm run docker-release-haproxy && npm run docker-release-haproxy-ingress && npm run docker-release-token-server",
