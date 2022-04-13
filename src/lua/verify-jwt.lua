@@ -40,7 +40,7 @@ local function extractTokenFromHeader(txn)
 end
 
 local function setReqHeaders(txn, headers)
-  print_r({ setheaders = 1, headers = headers })
+
   for key, value in pairs(headers) do
     local encoded = tostring(value)
     
@@ -86,8 +86,6 @@ local function checkToken(token)
   })
   
   local body = cjson.decode(result.body or "")
-
-  print_r({ responsebe = 1, body = body, token = token, raw = result.body, result = result })
 
   if result.status == 0 or body == nil then
     return backendUnavailHeaders

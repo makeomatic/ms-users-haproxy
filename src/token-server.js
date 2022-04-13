@@ -47,7 +47,6 @@ const verifyRoute = {
   url: '/',
   async handler(request) {
     const rawToken = request.body;
-    this.log.debug({ rawToken }, '=== RAW');
 
     if (!JoseWrapper.isJweToken(rawToken)) {
       return {
