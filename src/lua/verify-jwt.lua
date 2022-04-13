@@ -2,19 +2,25 @@ local cjson = require("cjson.safe")
 
 require "verify-jwt.print_r"
 
-local jwks = require "verify-jwt.jwks"
 local config = require "verify-jwt.config"
-local socket = require "socket"
 
-local newCjson = cjson.new
 local JWT_CACHE_TTL = config.jwt.cacheTTL
 local JWT_TOKEN_SERVER_BACKEND = config.jwt.tokenServer
 
 local verifyCache = {}
 
+local backendUnavailHeaders = {
+  valid = 0,
+  reason = "E_BACKEND_UNAVAIL"
+}
+
+local invalidTokenHeaders = {
+  valid = 0,
+  reason = "E_TKN_INVALID"
+}
+
 -- Extracts JWT token information using haproxy internal features
--- parses header and body using `cjson` library
-local function extractJWTFromHeader(txn)
+local function extractTokenFromHeader(txn)
   local authHeader = txn.f:req_fhdr('authorization')
 
   if authHeader == nil then
@@ -30,65 +36,20 @@ local function extractJWTFromHeader(txn)
     return nil
   end
 
-  local tokenFields = core.tokenize(jwtRaw, " .")
-
-  if #tokenFields ~= 3 then
-    return nil
-  end
-
-  local jwtBody = tokenFields[2]
-  local jwtHeader = tokenFields[1]
-  local jwtSignature = tokenFields[3]
-
-  local stringBody = txn.c:ub64dec(jwtBody)
-  local stringHeader = txn.c:ub64dec(jwtHeader)
-  local stringSignature = txn.c:ub64dec(jwtSignature)
-
-  local json = newCjson()
-  local decodedBody = json.decode(stringBody)
-  local decodedHeader = json.decode(stringHeader)
-
-  local jwtAlgo = decodedHeader['alg']
-
-  return {
-    algo = jwtAlgo,
-    encodedBody = jwtBody,
-    encodedHeader = jwtHeader,
-    body = stringBody,
-    decodedBody = decodedBody,
-    signature = stringSignature,
-  }
+  return jwtRaw
 end
 
-local function setReqParams(txn, valid, reason, jwtObj)
-  txn.set_var(txn, 'txn.tkn.valid', valid)
-  txn.set_var(txn, 'txn.tkn.reason', reason)
-
-  txn.http:req_add_header('x-tkn-valid', valid)
-  txn.http:req_add_header('x-tkn-reason', reason)
-
-  if jwtObj ~= nil then
-    txn.http:req_add_header('x-tkn-body', jwtObj.body)
-    -- set additional information about token
-    if jwtObj.decodedBody.st ~= nil then
-      txn.http:req_add_header('x-tkn-stateless', 1)
-      txn.set_var(txn, 'txn.tkn.stateless', 1)
-    else
-      txn.http:req_add_header('x-tkn-legacy', 1)
-      txn.set_var(txn, 'txn.tkn.legacy', 1)
-    end
+local function setReqHeaders(txn, headers)
+  print_r({ setheaders = 1, headers = headers })
+  for key, value in pairs(headers) do
+    local encoded = tostring(value)
     
-    local json = newCjson()
-    for key, value in pairs(jwtObj.decodedBody) do
-      local encoded = tostring(value)
-
-      if type(value) == 'table' then    
-        encoded = json.encode(value)
-      end
-
-      txn:set_var("txn.tkn.payload." .. key, encoded)
+    if type(value) == 'table' then    
+      encoded = cjson.encode(value)
     end
 
+    txn.set_var(txn, 'txn.tkn.'..key, encoded)
+    txn.http:req_add_header('x-tkn-'..key, encoded)
   end
 end
 
@@ -110,77 +71,57 @@ local function selectJwtBackend()
 end
 
 -- checks passed token using token server backend
-local function checkRules(jwtObj)
+local function checkToken(token)
   local httpclient = core.httpclient()
   local backend = selectJwtBackend()
 
   if backend == nil then
-    return false, "E_BACKEND_UNAVAIL"
+    return backendUnavailHeaders
   end
   
   local url = "http://" .. backend
-  local result = httpclient:post({ url = url, body = jwtObj.body })
-
-  if result.status == 0 then
-    return false, "E_BACKEND_UNAVAIL"
-  end
+  local result = httpclient:post({
+    url = url,
+    body = token,
+  })
   
-  return result.body == "ok", result.body
+  local body = cjson.decode(result.body or "")
+
+  print_r({ responsebe = 1, body = body, token = token, raw = result.body, result = result })
+
+  if result.status == 0 or body == nil then
+    return backendUnavailHeaders
+  end
+
+  return body
 end
 
 -- action entry point
 local function verifyJWT(txn)
-  local jwtObj = extractJWTFromHeader(txn)
+  local token = extractTokenFromHeader(txn)
 
-  if jwtObj == nil then
-    setReqParams(txn, 0, 'E_TKN_INVALID') 
+  if token == nil then
+    setReqHeaders(txn, invalidTokenHeaders) 
     return
   end
 
-  local res = jwks.validateJWTSignature(jwtObj)
-
-  if res ~= true then
-    setReqParams(txn, 0, 'E_TKN_INVALID')
-    return
-  end
-
-  if jwtObj.decodedBody.st == nil then
-    setReqParams(txn, 0, 'E_TKN_LEGACY', jwtObj)
-    return
-  end
-
-  local filterResult, reason
+  local headers = {}
   local now = core.now().sec
-  local cached = verifyCache[jwtObj.signature]
+  local cached = verifyCache[token]
   
   if cached ~= nil and cached.exp > now then
     -- use cache
-    filterResult, reason = cached.data[0], cached.data[1]
+    headers = cached.data
   else
-    filterResult, reason = checkRules(jwtObj)
+    headers = checkToken(token)
     -- cache result
-    verifyCache[jwtObj.signature] = {
-      data = {
-        filterResult,
-        reason,
-      },
+    verifyCache[token] = {
+      data = headers,
       exp = now + JWT_CACHE_TTL,
     }
   end
   
-  if filterResult == false then
-    setReqParams(txn, 0, reason, jwtObj)
-    return
-  end
-
-  -- finally all checks passed
-  setReqParams(txn, 1, 'ok', jwtObj)
+  setReqHeaders(txn, headers)
 end
 
 core.register_action('verify-jwt', {'http-req'}, verifyJWT)
-
--- start pollers
-core.register_task(jwks.loader)
-
--- initial load
-core.register_init(jwks.loadKeys)
