@@ -1,11 +1,9 @@
-const fs = require('fs').promises;
 const { deepStrictEqual } = require('assert');
 const { delay } = require('bluebird');
 
 const axios = require('axios').default;
 const ld = require('lodash');
 
-const jwt = require('jsonwebtoken');
 const app = require('../../src/fastify-app');
 
 const ConsulUtil = require('../util/consul');
@@ -22,7 +20,6 @@ const haGet = async (token) => {
   const response = await axios.get('/', {
     headers: {
       authorization: token ? `JWT ${token}` : undefined,
-      // 'Authorization': token ? `Bearer ${token}` : undefined
     },
   });
   const interesting = Object.keys(response.data).filter((p) => p.startsWith('x-'));
@@ -30,31 +27,20 @@ const haGet = async (token) => {
   return ld.pick(response.data, interesting);
 };
 
-describe('HaProxy lua', () => {
-  let privateKeys;
-
-  const signRsa = (payload) => jwt.sign({ ...payload }, privateKeys.rsa, { algorithm: 'RS256' });
-  // const signEs = (payload) => jwt.sign({ ...payload }, privateKeys.es, { algorithm: 'ES256' })
-  const signHmac = (payload) => jwt.sign({ ...payload }, privateKeys.hs, { algorithm: 'HS256' });
+describe('HaProxy lua + token server', () => {
+  const encryptJose = async (payload) => app.service.jwe.encrypt(payload);
 
   const validateResponse = (res, expected) => {
     const prefix = 'x-tkn';
     Object.entries(expected).forEach(([k, v]) => {
       const prop = `${prefix}-${k}`;
-      deepStrictEqual(res[prop], v, `header '${prop}' should have value '${v}' but has '${res[prop]}'`);
+      const value = typeof v === 'object' ? JSON.parse(res[prop]) : res[prop];
+
+      deepStrictEqual(value, v, `header '${prop}' should have value '${v}' but has '${res[prop]}'`);
     });
   };
 
   before(async () => {
-    privateKeys = {
-      rsa: {
-        key: await fs.readFile(`${__dirname}/../keys/rsa-private.pem`, 'utf-8'),
-        passphrase: '123123',
-      },
-      // es: await fs.readFile(`${__dirname}/../keys/alpine-es256-private.pem`, 'utf-8'),
-      hs: 'i-hope-that-you-change-this-long-default-secret-in-your-app',
-    };
-
     await app.listen(4000, '0.0.0.0');
     // wait for haproxy backend keepalive
     await delay(1000);
@@ -75,50 +61,13 @@ describe('HaProxy lua', () => {
   it('validates forged token', async () => {
     const res = await haGet('xx-yy-zz');
     validateResponse(res, {
-      reason: 'E_TKN_INVALID',
+      reason: 'E_TKN_LEGACY',
       valid: '0',
       body: undefined,
     });
   });
 
-  describe('HS', () => {
-    it('validates valid token', async () => {
-      const data = {
-        username: '777444777',
-        iat: Date.now(),
-        exp: Date.now() + 30000,
-        audience: ['x', 'y'],
-        st: 1,
-      };
-
-      const res = await haGet(signHmac(data));
-      validateResponse(res, {
-        reason: 'ok',
-        valid: '1',
-        body: JSON.stringify(data),
-      });
-    });
-
-    it('validates expired token', async () => {
-      const data = {
-        username: '777444777',
-        iat: Date.now(),
-        exp: Date.now() - 1000,
-        audience: ['x', 'y'],
-        st: 1,
-      };
-
-      const res = await haGet(signHmac(data));
-
-      validateResponse(res, {
-        valid: '0',
-        reason: 'E_TKN_INVALID',
-        body: JSON.stringify(data),
-      });
-    });
-  });
-
-  describe('RS', () => {
+  describe('jwe', () => {
     it('validates valid token', async () => {
       const data = {
         username: '777444777',
@@ -128,13 +77,13 @@ describe('HaProxy lua', () => {
         st: 1,
       };
 
-      const token = signRsa(data);
+      const token = await encryptJose(data);
       const res = await haGet(token);
 
       validateResponse(res, {
         valid: '1',
         reason: 'ok',
-        body: JSON.stringify(data),
+        body: data,
       });
     });
 
@@ -147,12 +96,12 @@ describe('HaProxy lua', () => {
         st: 1,
       };
 
-      const res = await haGet(signRsa(data));
+      const token = await encryptJose(data);
+      const res = await haGet(token);
 
       validateResponse(res, {
         valid: '0',
         reason: 'E_TKN_INVALID',
-        body: JSON.stringify(data),
       });
     });
   });
@@ -168,7 +117,7 @@ describe('HaProxy lua', () => {
       st: 1,
     };
 
-    const createAccessToken = (rt, extra) => {
+    const createAccessTokenData = (rt, extra) => {
       tid += 1;
       return {
         cs: tid,
@@ -180,7 +129,7 @@ describe('HaProxy lua', () => {
       };
     };
 
-    const createRefreshToken = (username, extra) => {
+    const createRefreshTokenData = (username, extra) => {
       tid += 1;
       return {
         cs: tid,
@@ -192,8 +141,8 @@ describe('HaProxy lua', () => {
     };
 
     const createTokenPair = (username, extra = {}) => {
-      const refresh = createRefreshToken(username, extra);
-      const access = createAccessToken(refresh);
+      const refresh = createRefreshTokenData(username, extra);
+      const access = createAccessTokenData(refresh);
       return { refresh, access };
     };
 
@@ -230,14 +179,14 @@ describe('HaProxy lua', () => {
 
         const { refresh: firstRefresh, access: firstAccess } = createTokenPair(user);
 
-        const secondAccess = createAccessToken(firstRefresh, {
+        const secondAccess = createAccessTokenData(firstRefresh, {
           iat: Date.now() + 1 * 60 * 60 * 1000,
         });
 
         // invalidate 1 access token
         await revocationRulesManager.add(uRule(firstRefresh), invAccess(secondAccess));
 
-        const thirdAccess = createAccessToken(firstRefresh, {
+        const thirdAccess = createAccessTokenData(firstRefresh, {
           iat: Date.now() + 2 * 60 * 60 * 1000,
         });
 
@@ -245,9 +194,9 @@ describe('HaProxy lua', () => {
         await revocationRulesManager.add(uRule(firstRefresh), invAccess(thirdAccess));
         await delay(100);
 
-        const thirdJwtRes = await haGet(signHmac(thirdAccess));
-        const secondJwtRes = await haGet(signHmac(secondAccess));
-        const firstJwtRes = await haGet(signHmac(firstAccess));
+        const thirdJwtRes = await haGet(await encryptJose(thirdAccess));
+        const secondJwtRes = await haGet(await encryptJose(secondAccess));
+        const firstJwtRes = await haGet(await encryptJose(firstAccess));
 
         validateResponse(firstJwtRes, blacklistedResponse);
         validateResponse(secondJwtRes, blacklistedResponse);
@@ -257,9 +206,9 @@ describe('HaProxy lua', () => {
         await revocationRulesManager.add(uRule(firstRefresh), invRtRule(firstRefresh));
         await delay(100);
 
-        const thirdInvJwtRes = await haGet(signHmac(thirdAccess));
-        const secondInvJwtRes = await haGet(signHmac(secondAccess));
-        const firstInvJwtRes = await haGet(signHmac(firstAccess));
+        const thirdInvJwtRes = await haGet(await encryptJose(thirdAccess));
+        const secondInvJwtRes = await haGet(await encryptJose(secondAccess));
+        const firstInvJwtRes = await haGet(await encryptJose(firstAccess));
 
         validateResponse(firstInvJwtRes, blacklistedResponse);
         validateResponse(secondInvJwtRes, blacklistedResponse);
@@ -271,13 +220,13 @@ describe('HaProxy lua', () => {
 
         // sign new tokens
         const newPair = createTokenPair(user);
-        const newJwtRes = await haGet(signHmac(newPair.access));
+        const newJwtRes = await haGet(await encryptJose(newPair.access));
 
         // invalidate all tokens
         await revocationRulesManager.add(gRule(), invAll(newPair.refresh));
         await delay(100);
 
-        const newJwtBlockedRes = await haGet(signHmac(newPair.access));
+        const newJwtBlockedRes = await haGet(await encryptJose(newPair.access));
 
         validateResponse(newJwtRes, okResponse);
         validateResponse(newJwtBlockedRes, blacklistedResponse);
@@ -286,7 +235,7 @@ describe('HaProxy lua', () => {
       it('#rules and #_or', async () => {
         const { revocationRulesManager } = app.service;
 
-        const accessTokenData = createAccessToken({
+        const accessTokenData = createAccessTokenData({
           cs: 'xid',
           username: user,
           ...base,
@@ -320,7 +269,7 @@ describe('HaProxy lua', () => {
         await delay(100);
 
         const check = async (rule, data, shoulBeInvalid = true) => {
-          const token = signHmac({
+          const token = await encryptJose({
             ...accessTokenData,
             username: rule,
             ...data,
