@@ -17,11 +17,11 @@ services:
     hostname: ha1
     build:
       context: ${PWD}
+      dockerfile: Dockerfile-haproxy
     depends_on: 
       - consul
     volumes:
       - ${PWD}/test/config:/usr/local/etc/haproxy
-      - ${PWD}/test/keys:/usr/local/etc/haproxy-keys
       - ${PWD}/test/server/tracer.lua:/usr/local/etc/haproxy-tracer.lua
       - ${PWD}/src/lua/verify-jwt.lua:/usr/local/lib/lua/5.3/verify-jwt.lua
       - ${PWD}/src/lua/verify-jwt:/usr/local/lib/lua/5.3/verify-jwt
