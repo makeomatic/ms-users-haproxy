@@ -5,7 +5,7 @@ FROM golang:1.17-alpine AS builder
 
 RUN apk --no-cache add git openssh
 
-RUN git clone --depth 1 --branch v1.7.5 https://github.com/haproxytech/kubernetes-ingress.git /src
+RUN git clone --depth 1 --branch v1.7.9 https://github.com/haproxytech/kubernetes-ingress.git /src
 
 RUN cd /src && go mod download
 
@@ -58,5 +58,4 @@ RUN apk --no-cache add socat openssl util-linux htop tzdata curl && \
     chmod ug+rwx /var/run/s6 && \
     sed -i 's/ root / haproxy /g' /etc/s6/init/init-stage2-fixattrs.txt
 
-USER haproxy
 ENTRYPOINT ["/start.sh"]
