@@ -52,7 +52,7 @@ dependencies:
   ioredis: 5.0.3
   lodash: 4.17.21
   ms-conf: 7.0.2
-  ms-users: github.com/makeomatic/ms-users/0a81ce4f810a20eb064f88f36fa9367dca51d1da
+  ms-users: github.com/makeomatic/ms-users/7f23557e0322dd83fcb25345e55fd5c1dc590748
 
 devDependencies:
   '@babel/core': 7.17.8
@@ -626,7 +626,7 @@ packages:
       '@hapi/somever': 3.0.1
       '@hapi/statehood': 7.0.3
       '@hapi/subtext': 7.0.3
-      '@hapi/teamwork': 5.1.0
+      '@hapi/teamwork': 5.1.1
       '@hapi/topo': 5.1.0
       '@hapi/validate': 1.1.3
     dev: false
@@ -684,7 +684,7 @@ packages:
     resolution: {integrity: sha512-ljsKGQzLkFqnQxE7qeanvgGj4dejnciErYd30dbrYzUOF/FyS/DOF97qcrT3bhoVwCYmxa6PEMhxfCPlnUcD2g==}
     dependencies:
       '@hapi/hoek': 9.2.1
-      '@hapi/teamwork': 5.1.0
+      '@hapi/teamwork': 5.1.1
       '@hapi/validate': 1.1.3
     dev: false
 
@@ -726,8 +726,8 @@ packages:
       '@hapi/wreck': 17.2.0
     dev: false
 
-  /@hapi/teamwork/5.1.0:
-    resolution: {integrity: sha512-llqoQTrAJDTXxG3c4Kz/uzhBS1TsmSBa/XG5SPcVXgmffHE1nFtyLIK0hNJHCB3EuBKT84adzd1hZNY9GJLWtg==}
+  /@hapi/teamwork/5.1.1:
+    resolution: {integrity: sha512-1oPx9AE5TIv+V6Ih54RP9lTZBso3rP8j4Xhb6iSVwPXtAM+sDopl5TFMv5Paw73UnpZJ9gjcrTE1BXrWt9eQrg==}
     engines: {node: '>=12.0.0'}
     dev: false
 
@@ -861,7 +861,7 @@ packages:
     hasBin: true
     dependencies:
       detect-libc: 2.0.1
-      https-proxy-agent: 5.0.0
+      https-proxy-agent: 5.0.1
       make-dir: 3.1.0
       node-fetch: 2.6.7
       nopt: 5.0.0
@@ -1075,7 +1075,7 @@ packages:
       '@microfleet/core': ^17.21.0
       common-errors: ~1.x.x
     dependencies:
-      '@microfleet/core': 17.21.0_@microfleet+validation@11.1.2
+      '@microfleet/core': 17.21.0_fae3aad7a15f7f2037ade48a3bea6a2c
       '@microfleet/core-types': 0.15.0
       '@microfleet/plugin-validator': 0.15.0_d01fb63d6956cd0d11a3870041e3536b
       '@microfleet/utils': 0.15.0
@@ -1416,7 +1416,7 @@ packages:
       '@microfleet/core-types': ^0.15.0
       '@microfleet/utils': ^0.15.0
     dependencies:
-      '@microfleet/core': 17.21.0_@microfleet+validation@11.1.2
+      '@microfleet/core': 17.21.0_fae3aad7a15f7f2037ade48a3bea6a2c
       '@microfleet/core-types': 0.15.0
       '@microfleet/utils': 0.15.0
       '@microfleet/validation': 11.1.2
@@ -1868,7 +1868,7 @@ packages:
     resolution: {integrity: sha512-ALYone6pm6QmwZoAgeyNksccT9Q4AWZQ6PvfwR37GT6r6FWUPguq6sUmNGSMV2Wr761oQoBxwGGa6DR5o1DC9g==}
     dependencies:
       '@types/connect': 3.4.35
-      '@types/node': 17.0.23
+      '@types/node': 17.0.24
     dev: false
 
   /@types/cacheable-request/6.0.2:
@@ -1876,7 +1876,7 @@ packages:
     dependencies:
       '@types/http-cache-semantics': 4.0.1
       '@types/keyv': 3.1.4
-      '@types/node': 17.0.23
+      '@types/node': 17.0.24
       '@types/responselike': 1.0.0
     dev: false
 
@@ -1893,7 +1893,7 @@ packages:
   /@types/connect/3.4.35:
     resolution: {integrity: sha512-cdeYyv4KWoEgpBISTxWvqYsVy444DOqehiF3fM3ne10AmJ62RSyNkUnxMJXHQWRQQX2eR94m5y1IZyDwBjV9FQ==}
     dependencies:
-      '@types/node': 17.0.23
+      '@types/node': 17.0.24
     dev: false
 
   /@types/cookie/0.4.1:
@@ -1914,7 +1914,7 @@ packages:
   /@types/express-serve-static-core/4.17.28:
     resolution: {integrity: sha512-P1BJAEAW3E2DJUlkgq4tOL3RyMunoWXqbSCygWo5ZIWTjUgN1YnaXWW4VWl/oc8vs/XoYibEGBKP0uZyF4AHig==}
     dependencies:
-      '@types/node': 17.0.23
+      '@types/node': 17.0.24
       '@types/qs': 6.9.7
       '@types/range-parser': 1.2.4
     dev: false
@@ -1953,7 +1953,7 @@ packages:
   /@types/keyv/3.1.4:
     resolution: {integrity: sha512-BQ5aZNSCpj7D6K2ksrRCTmKRLEpnPvWDiLPfoGyhZ++8YtiK9d/3DBKPJgry359X/P1PfruyYwvnvwFjuEiEIg==}
     dependencies:
-      '@types/node': 17.0.23
+      '@types/node': 17.0.24
     dev: false
 
   /@types/mime/1.3.2:
@@ -1970,6 +1970,11 @@ packages:
 
   /@types/node/17.0.23:
     resolution: {integrity: sha512-UxDxWn7dl97rKVeVS61vErvw086aCYhDLyvRQZ5Rk65rZKepaFdm53GeqXaKBuOhED4e9uWq34IC3TdSdJJ2Gw==}
+    dev: true
+
+  /@types/node/17.0.24:
+    resolution: {integrity: sha512-aveCYRQbgTH9Pssp1voEP7HiuWlD2jW2BO56w+bVrJn04i61yh6mRfoKO6hEYQD9vF+W8Chkwc6j1M36uPkx4g==}
+    dev: false
 
   /@types/normalize-package-data/2.4.1:
     resolution: {integrity: sha512-Gj7cI7z+98M282Tqmp2K5EIsoouUEzbBJhQQzDE3jSIRk6r9gsz0oUokqIUR4u1R3dMHo0pDHM7sNOHyhulypw==}
@@ -1989,7 +1994,7 @@ packages:
   /@types/responselike/1.0.0:
     resolution: {integrity: sha512-85Y2BjiufFzaMIlvJDvTTB8Fxl2xfLo4HgmHzVBz08w4wDePCTjYw66PdrolO0kzli3yam/YCgRufyo1DdQVTA==}
     dependencies:
-      '@types/node': 17.0.23
+      '@types/node': 17.0.24
     dev: false
 
   /@types/retry/0.12.1:
@@ -1999,7 +2004,7 @@ packages:
     resolution: {integrity: sha512-nCkHGI4w7ZgAdNkrEu0bv+4xNV/XDqW+DydknebMOQwkpDGx8G+HTlj7R7ABI8i8nKxVw0wtKPi1D+lPOkh4YQ==}
     dependencies:
       '@types/mime': 1.3.2
-      '@types/node': 17.0.23
+      '@types/node': 17.0.24
     dev: false
 
   /@typescript-eslint/eslint-plugin/5.12.0_4952070cb724deba7de20a50d4891fa1:
@@ -3297,7 +3302,7 @@ packages:
     dependencies:
       '@types/cookie': 0.4.1
       '@types/cors': 2.8.12
-      '@types/node': 17.0.23
+      '@types/node': 17.0.24
       accepts: 1.3.8
       base64id: 2.0.0
       cookie: 0.4.2
@@ -4441,6 +4446,16 @@ packages:
     transitivePeerDependencies:
       - supports-color
 
+  /https-proxy-agent/5.0.1:
+    resolution: {integrity: sha512-dFcAjpTQFgoLMzC2VwU+C/CbS7uRL0lWmxDITmqm7C+7F0Odmj6s9l6alZc6AELXhrnggM2CeWSXHGOdX2YtwA==}
+    engines: {node: '>= 6'}
+    dependencies:
+      agent-base: 6.0.2
+      debug: 4.3.4
+    transitivePeerDependencies:
+      - supports-color
+    dev: false
+
   /human-signals/2.1.0:
     resolution: {integrity: sha512-B4FFZ6q/T2jhhksgkbEW3HBvWIfDW85snkQgawt07S7J5QXTk6BkNV+0yAeZrM5QpMAdYlocGoljn0sJ/WQkFw==}
     engines: {node: '>=10.17.0'}
@@ -4862,8 +4877,8 @@ packages:
       '@panva/asn1.js': 1.0.0
     dev: false
 
-  /jose/4.6.0:
-    resolution: {integrity: sha512-0hNAkhMBNi4soKSAX4zYOFV+aqJlEz/4j4fregvasJzEVtjDChvWqRjPvHwLqr5hx28Ayr6bsOs1Kuj87V0O8w==}
+  /jose/4.6.1:
+    resolution: {integrity: sha512-EFnufEivlIB6j7+JwaenYQzdUDs/McajDr9WnhT6EI0WxbexnfuZimpWX1GnobF6OnQsUFmWFXUXdWyZHWdQow==}
     dev: false
 
   /joycon/3.1.1:
@@ -4953,22 +4968,6 @@ packages:
     engines: {'0': node >= 0.2.0}
     dev: true
 
-  /jsonwebtoken/8.5.1:
-    resolution: {integrity: sha512-XjwVfRS6jTMsqYs0EsuJ4LGxXV14zQybNd4L2r0UvbVnSF9Af8x7p5MzbJ90Ioz/9TI41/hTCvznF/loiSzn8w==}
-    engines: {node: '>=4', npm: '>=1.4.28'}
-    dependencies:
-      jws: 3.2.2
-      lodash.includes: 4.3.0
-      lodash.isboolean: 3.0.3
-      lodash.isinteger: 4.0.4
-      lodash.isnumber: 3.0.3
-      lodash.isplainobject: 4.0.6
-      lodash.isstring: 4.0.1
-      lodash.once: 4.1.1
-      ms: 2.1.3
-      semver: 5.7.1
-    dev: false
-
   /jsprim/1.4.2:
     resolution: {integrity: sha512-P2bSOMAc/ciLz6DzgjVlGJP9+BrJWu5UDGK70C2iweC5QBIeFf0ZXRvGjEj2uYgrY2MkAAhsSWHDWlFtEroZWw==}
     engines: {node: '>=0.6.0'}
@@ -4977,14 +4976,6 @@ packages:
       extsprintf: 1.3.0
       json-schema: 0.4.0
       verror: 1.10.0
-    dev: false
-
-  /jwa/1.4.1:
-    resolution: {integrity: sha512-qiLX/xhEEFKUAJ6FiBMbes3w9ATzyk5W7Hvzpa/SLYdxNtng+gcurvrI7TbACjIXlsJyr05/S1oUhZrc63evQA==}
-    dependencies:
-      buffer-equal-constant-time: 1.0.1
-      ecdsa-sig-formatter: 1.0.11
-      safe-buffer: 5.2.1
     dev: false
 
   /jwa/2.0.0:
@@ -5006,13 +4997,6 @@ packages:
       lru-memoizer: 2.1.4
     transitivePeerDependencies:
       - supports-color
-    dev: false
-
-  /jws/3.2.2:
-    resolution: {integrity: sha512-YHlZCB6lMTllWDtSPHz/ZXTsi8S00usEV6v1tjq8tOUZzw7DpSDWVXjXDre6ed1w/pd495ODpHZYSdkRTsa0HA==}
-    dependencies:
-      jwa: 1.4.1
-      safe-buffer: 5.2.1
     dev: false
 
   /keyv/4.2.2:
@@ -5135,45 +5119,27 @@ packages:
     resolution: {integrity: sha1-LRd/ZS+jHpObRDjVNBSZ36OCXpk=}
     dev: true
 
-  /lodash.includes/4.3.0:
-    resolution: {integrity: sha1-YLuYqHy5I8aMoeUTJUgzFISfVT8=}
-    dev: false
-
   /lodash.isarguments/3.1.0:
     resolution: {integrity: sha1-L1c9hcaiQon/AGY7SRwdM4/zRYo=}
-    dev: false
-
-  /lodash.isboolean/3.0.3:
-    resolution: {integrity: sha1-bC4XHbKiV82WgC/UOwGyDV9YcPY=}
-    dev: false
-
-  /lodash.isinteger/4.0.4:
-    resolution: {integrity: sha1-YZwK89A/iwTDH1iChAt3sRzWg0M=}
     dev: false
 
   /lodash.ismatch/4.4.0:
     resolution: {integrity: sha1-dWy1FQyjum8RCFp4hJZF8Yj4Xzc=}
     dev: true
 
-  /lodash.isnumber/3.0.3:
-    resolution: {integrity: sha1-POdoEMWSjQM1IwGsKHMX8RwLH/w=}
-    dev: false
-
   /lodash.isplainobject/4.0.6:
     resolution: {integrity: sha1-fFJqUtibRcRcxpC4gWO+BJf1UMs=}
+    dev: true
 
   /lodash.isstring/4.0.1:
     resolution: {integrity: sha1-1SfftUVuynzJu5XV2ur4i6VKVFE=}
+    dev: true
 
   /lodash.merge/4.6.2:
     resolution: {integrity: sha512-0KpjqXRVvrYyCsX1swR/XTK0va6VQkQM6MNo7PqW77ByjAhoARA8EfrP1N4+KlKj8YS0ZUCtRT/YUuhyYDujIQ==}
 
   /lodash.mergewith/4.6.2:
     resolution: {integrity: sha512-GK3g5RPZWTRSeLSpgP8Xhra+pnjBC56q9FZYe1d5RN3TJ35dbkGy3YqBSMbyCrlbi+CM9Z3Jk5yTL7RCsqboyQ==}
-
-  /lodash.once/4.1.1:
-    resolution: {integrity: sha1-DdOXEhPHxW34gJd9UEyI+0cal6w=}
-    dev: false
 
   /lodash.reduce/4.6.0:
     resolution: {integrity: sha1-8atrg5KZrUj3hKu/R2WW8DuRTTs=}
@@ -5415,7 +5381,7 @@ packages:
   /mnemonist/0.39.0:
     resolution: {integrity: sha512-7v08Ldk1lnlywnIShqfKYN7EW4WKLUnkoWApdmR47N1xA2xmEtWERfEvyRCepbuFCETG5OnfaGQpp/p4Bus6ZQ==}
     dependencies:
-      obliterator: 2.0.2
+      obliterator: 2.0.3
     dev: false
 
   /mocha/9.2.2:
@@ -5454,8 +5420,8 @@ packages:
     engines: {node: '>=0.10.0'}
     dev: true
 
-  /moment/2.29.2:
-    resolution: {integrity: sha512-UgzG4rvxYpN15jgCmVJwac49h9ly9NurikMWGPdVxm8GZD6XjkKPxDTjQQ43gtGgnV3X0cAyWDdP2Wexoquifg==}
+  /moment/2.29.3:
+    resolution: {integrity: sha512-c6YRvhEo//6T2Jz/vVtYzqBzwvPT95JBQ+smCytzf7c50oMZRsR/a4w88aD34I+/QVSfnoAnSBFPJHItlOMJVw==}
     dev: false
 
   /mri/1.1.4:
@@ -5827,8 +5793,8 @@ packages:
       es-abstract: 1.19.2
     dev: true
 
-  /obliterator/2.0.2:
-    resolution: {integrity: sha512-g0TrA7SbUggROhDPK8cEu/qpItwH2LSKcNl4tlfBNT54XY+nOsqrs0Q68h1V9b3HOSpIWv15jb1lax2hAggdIg==}
+  /obliterator/2.0.3:
+    resolution: {integrity: sha512-qN5lHhArxl/789Bp3XCpssAYy7cvOdRzxzflmGEJaiipAT2b/USr1XvKjYyssPOwQ/3KjV1e8Ed9po9rie6E6A==}
     dev: false
 
   /on-exit-leak-free/0.2.0:
@@ -7699,8 +7665,8 @@ packages:
     resolution: {integrity: sha1-KOwXzwl0PtyrBW3dixsGJizHPDA=}
     dev: false
 
-  github.com/makeomatic/ms-users/0a81ce4f810a20eb064f88f36fa9367dca51d1da:
-    resolution: {tarball: https://codeload.github.com/makeomatic/ms-users/tar.gz/0a81ce4f810a20eb064f88f36fa9367dca51d1da}
+  github.com/makeomatic/ms-users/7f23557e0322dd83fcb25345e55fd5c1dc590748:
+    resolution: {tarball: https://codeload.github.com/makeomatic/ms-users/tar.gz/7f23557e0322dd83fcb25345e55fd5c1dc590748}
     name: ms-users
     version: 15.2.1
     engines: {node: '>= 14.18.0', npm: '>= 4.0.0'}
@@ -7749,12 +7715,11 @@ packages:
       handlebars: 4.7.7
       ioredis: 4.28.5
       is: 3.3.0
-      jose: 4.6.0
-      jsonwebtoken: 8.5.1
+      jose: 4.6.1
       jwa: 2.0.0
       jwks-rsa: 2.0.5
       lodash: 4.17.21
-      moment: 2.29.2
+      moment: 2.29.3
       ms-conf: 7.0.2
       ms-flakeless: 4.6.4
       ms-mailer-client: 8.1.0_9a577e484bf7cdd0edcecd4eb574b07d
