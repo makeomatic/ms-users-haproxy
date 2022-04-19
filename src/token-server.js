@@ -1,7 +1,9 @@
 const { Microfleet, ConnectorsTypes } = require('@microfleet/core');
 const { merge } = require('lodash');
 
-const { ConsulWatcher, auth: { statelessJWT: { jwt, rule } } } = require('ms-users/lib/utils');
+const { ConsulWatcher, auth: { statelessJWT: { jwt, rule, jwe: { JoseWrapper } } } } = require('ms-users/src/utils');
+const { USERS_INVALID_TOKEN } = require('ms-users/src/constants');
+
 const conf = require('./config');
 
 const config = conf.get('/', { env: process.env.NODE_ENV });
@@ -13,11 +15,14 @@ class TokenServer extends Microfleet {
     super(merge({}, config, opts));
 
     const pluginName = 'JwtRevocationRules';
-    const { jwt: { stateless: { storage } } } = this.config;
+    const { jwt: { stateless: { storage, jwe } } } = this.config;
 
-    this.addConnector(ConnectorsTypes.application, () => {
+    this.addConnector(ConnectorsTypes.application, async () => {
       const { log, consul } = this;
       const watcher = new ConsulWatcher(consul, log);
+      this.jwe = new JoseWrapper(jwe);
+      await this.jwe.init();
+
       const ruleManager = this.revocationRulesManager = new RevocationRulesManager(this);
       const ruleStorage = this.revocationRulesStorage = new RevocationRulesStorage(
         ruleManager,
@@ -43,16 +48,42 @@ const verifyRoute = {
   method: 'POST',
   url: '/',
   async handler(request) {
-    const token = request.body;
+    const rawToken = request.body;
+
+    if (!JoseWrapper.isJweToken(rawToken)) {
+      return {
+        valid: '0',
+        reason: 'E_TKN_LEGACY',
+      };
+    }
 
     try {
-      await jwt.verify(this.service, token);
-      return 'ok';
+      const { service } = this;
+      const { payload, protectedHeader } = await service.jwe
+        .decrypt(rawToken)
+        .catch((e) => {
+          this.log.debug({ error: e }, 'token decrypt error');
+          throw USERS_INVALID_TOKEN;
+        });
+      const verifiedToken = await jwt.verify(service, payload);
+
+      return {
+        valid: '1',
+        reason: 'ok',
+        body: verifiedToken,
+        header: protectedHeader,
+        stateless: '1',
+      };
     } catch (e) {
       if (![403, 401].includes(e.status)) {
         this.log.error({ error: e }, 'token verify error');
       }
-      return e.code || e.message;
+
+      return {
+        valid: '0',
+        reason: e.code || e.message,
+        stateless: '1',
+      };
     }
   },
 };

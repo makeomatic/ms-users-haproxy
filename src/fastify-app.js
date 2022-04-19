@@ -20,7 +20,8 @@ const plugin = fp(async function plugin(instance) {
   instance.log.level = service.log.level;
 });
 
-app.addContentTypeParser('*', { parseAs: 'string' }, app.getDefaultJsonParser('ignore', 'ignore'));
+app.addContentTypeParser('*', { parseAs: 'string' }, async (_req, payload) => payload);
+
 app.register(plugin);
 
 app.route(verifyRoute);

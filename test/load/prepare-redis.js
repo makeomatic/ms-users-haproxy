@@ -4,13 +4,29 @@ const { map } = require('bluebird');
 const ld = require('lodash');
 const Redis = require('ioredis');
 
-const jwt = require('jsonwebtoken');
+const { JoseWrapper } = require('ms-users/src/utils/stateless-jwt/jwe');
 
 const ruleCount = 500;
 let total = 0;
-let privateKeys;
 
-const signRsa = (payload) => jwt.sign({ ...payload }, privateKeys.rsa, { algorithm: 'RS256' });
+const jwe = new JoseWrapper({
+  jwk: [
+    {
+      defaultKey: true,
+      kty: 'oct',
+      use: 'enc',
+      kid: 'enc-2022-04-12T07:25:52Z',
+      k: 'm0kTI7Vp2Hm5A5whjrYw9V5GtvQcrZEFYQiwjXqM1A1Iy_bmYENOHAjztDEBWHx-OwpsYMJ8HT2X-iIE-u1UFQ',
+      alg: 'dir',
+    },
+  ],
+  cypher: {
+    alg: 'dir',
+    enc: 'A256CBC-HS512',
+  },
+});
+
+const encryptTokens = (payload) => jwe.encrypt({ ...payload });
 
 function createGlobalCmds(r) {
   const gKey = JSON.stringify({
@@ -94,7 +110,7 @@ async function createUserRules(redis, userIds = []) {
 
 function createTokens(users) {
   const exp = Date.now() + 30 * 24 * 60 * 60 * 1000;
-  return users.map((user) => signRsa({
+  const promises = users.map((user) => encryptTokens({
     cs: `${user}-0xx`,
     rt: `${user}-0xx`,
     exp,
@@ -103,6 +119,8 @@ function createTokens(users) {
     iss: 'ms-users',
     extra: true,
   }));
+
+  return promises;
 }
 
 async function createConfig(token) {
@@ -116,17 +134,6 @@ async function createAmmo(tokens) {
   await fs.writeFile(`${__dirname}/ammo.txt`, rendered);
 }
 
-async function loadKeys() {
-  return {
-    rsa: {
-      key: await fs.readFile(`${__dirname}/../keys/rsa-private.pem`, 'utf-8'),
-      passphrase: '123123',
-    },
-    // es: await fs.readFile(`${__dirname}/../keys/alpine-es256-private.pem`, 'utf-8'),
-    hs: 'i-hope-that-you-change-this-long-default-secret-in-your-app',
-  };
-}
-
 async function start() {
   const redis = new Redis({
     sentinels: [
@@ -134,7 +141,8 @@ async function start() {
     ],
     name: 'mservice',
   });
-  privateKeys = await loadKeys();
+
+  await jwe.init();
 
   const users = [];
 
@@ -143,7 +151,7 @@ async function start() {
   });
 
   console.debug('Create tokens');
-  const userTokens = await createTokens(users);
+  const userTokens = await Promise.all(createTokens(users));
 
   console.debug('Create rules...');
 
