@@ -40,6 +40,8 @@ describe('HaProxy lua + token server', () => {
     });
   };
 
+  const toSeconds = (time = Date.now()) => Math.round(time / 1000);
+
   before(async () => {
     await app.listen(4000, '0.0.0.0');
     // wait for haproxy backend keepalive
@@ -71,8 +73,8 @@ describe('HaProxy lua + token server', () => {
     it('validates valid token', async () => {
       const data = {
         username: '777444777',
-        iat: Date.now(),
-        exp: Date.now() + 30 * 24 * 60 * 60 * 1000,
+        iat: toSeconds(),
+        exp: toSeconds() + 30 * 24 * 60 * 60,
         audience: ['x', 'y'],
         st: 1,
       };
@@ -90,8 +92,8 @@ describe('HaProxy lua + token server', () => {
     it('validates expired token', async () => {
       const data = {
         username: '777444777',
-        iat: Date.now(),
-        exp: Date.now() - 1000,
+        iat: toSeconds(),
+        exp: toSeconds() - 1,
         audience: ['x', 'y'],
         st: 1,
       };
@@ -112,8 +114,8 @@ describe('HaProxy lua + token server', () => {
     const base = {
       iss: 'ms-users',
       audience: '*.api',
-      iat: Date.now(),
-      exp: Date.now() + 30 * 24 * 60 * 60 * 1000,
+      iat: toSeconds(),
+      exp: toSeconds() + 30 * 24 * 60 * 60,
       st: 1,
     };
 
@@ -151,7 +153,7 @@ describe('HaProxy lua + token server', () => {
         _or: true, rt: rt.cs, cs: rt.cs, ttl: rt.exp,
       });
     };
-    const invAll = (rt) => (JSON.stringify({ iat: { lte: Date.now() }, username: rt.username }));
+    const invAll = (rt) => (JSON.stringify({ iat: { lte: toSeconds() }, username: rt.username }));
     const invAccess = (newAccess) => (JSON.stringify({ rt: newAccess.rt, iat: { lt: newAccess.iat } }));
 
     const uRule = (rt) => rt.username;
@@ -180,14 +182,14 @@ describe('HaProxy lua + token server', () => {
         const { refresh: firstRefresh, access: firstAccess } = createTokenPair(user);
 
         const secondAccess = createAccessTokenData(firstRefresh, {
-          iat: Date.now() + 1 * 60 * 60 * 1000,
+          iat: toSeconds() + 1 * 60 * 60,
         });
 
         // invalidate 1 access token
         await revocationRulesManager.add(uRule(firstRefresh), invAccess(secondAccess));
 
         const thirdAccess = createAccessTokenData(firstRefresh, {
-          iat: Date.now() + 2 * 60 * 60 * 1000,
+          iat: toSeconds() + 2 * 60 * 60,
         });
 
         // invalidate 2 access token

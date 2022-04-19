@@ -2,6 +2,8 @@ const { Microfleet, ConnectorsTypes } = require('@microfleet/core');
 const { merge } = require('lodash');
 
 const { ConsulWatcher, auth: { statelessJWT: { jwt, rule, jwe: { JoseWrapper } } } } = require('ms-users/src/utils');
+const { USERS_INVALID_TOKEN } = require('ms-users/src/constants');
+
 const conf = require('./config');
 
 const config = conf.get('/', { env: process.env.NODE_ENV });
@@ -51,14 +53,18 @@ const verifyRoute = {
     if (!JoseWrapper.isJweToken(rawToken)) {
       return {
         valid: '0',
-        legacy: '1',
         reason: 'E_TKN_LEGACY',
       };
     }
 
     try {
       const { service } = this;
-      const { payload, protectedHeader } = await service.jwe.decrypt(rawToken);
+      const { payload, protectedHeader } = await service.jwe
+        .decrypt(rawToken)
+        .catch((e) => {
+          this.log.debug({ error: e }, 'token decrypt error');
+          throw USERS_INVALID_TOKEN;
+        });
       const verifiedToken = await jwt.verify(service, payload);
 
       return {
