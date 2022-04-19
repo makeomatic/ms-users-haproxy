@@ -42,7 +42,7 @@
     "ioredis": "^5.0.3",
     "lodash": "^4.17.21",
     "ms-conf": "^7.0.2",
-    "ms-users": "github:makeomatic/ms-users#feat/jose-support"
+    "ms-users": "^15.3.0"
   },
   "devDependencies": {
     "@babel/core": "^7.17.8",
