@@ -10,6 +10,11 @@ module.exports = {
       host: 'consul',
     },
   },
+  redis: {
+    options: {
+      keyPrefix: '{ms-users}',
+    },
+  },
   jwt: {
     stateless: {
       enabled: true,
