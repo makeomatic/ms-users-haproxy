@@ -1,6 +1,6 @@
 {
   "name": "haproxy",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Provides JWT token verification script for HAProxy.",
   "directories": {
     "test": "test"

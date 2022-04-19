@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/makeomatic/ms-users-haproxy/compare/v1.0.0...v1.0.1) (2022-04-19)
+
+
+### Bug Fixes
+
+* redis config ([890aa68](https://github.com/makeomatic/ms-users-haproxy/commit/890aa680d27cd1135ef34e9971f9f725c443d903))
+
 # 1.0.0 (2022-04-19)
 
 
